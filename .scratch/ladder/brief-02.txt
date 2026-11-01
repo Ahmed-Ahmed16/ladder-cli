@@ -1,0 +1,55 @@
+<goal>
+Build ticket 02 of `ladder` (this repo, Python 3.12, stdlib only): tasks from `ladder.toml`, `ladder list`, `ladder <task> [args]`, and doctor reporting the file. One twist: the owner is learning and will TYPE the config parser himself. So you write the parser's tests and a stub that raises NotImplementedError, and build everything else against the stub's interface. The parser tests must FAIL at the end of your run; every other test must pass.
+</goal>
+
+<read_first>
+docs/decisions.md (D9 to D14), docs/spec.md, GLOSSARY.md, .scratch/ladder/issues/02-tasks-and-list.md, and all of src/ladder and tests/ as they are now.
+</read_first>
+
+<parser_interface>
+New module src/ladder/config.py. Write this part complete:
+- `@dataclass(frozen=True) class Task: name: str; about: str; run: tuple[str, ...]; shell: str | None = None; confirm: bool = False`
+- `@dataclass(frozen=True) class Config: path: str; tasks: dict[str, Task]; gates: dict; review: dict`
+- `CORE_JOBS = ("help", "list", "doctor", "pr", "gates", "init", "install-skill")`
+- `find(start: str) -> str | None`: walk up from `start` to the first folder holding `ladder.toml`; stop after the first folder that holds `.git`; return the file path or None.
+- `load(start) -> Config | None`: find, read as UTF-8, call parse; None when no file.
+
+Write ONLY a stub for `parse(text: str, path: str) -> Config` with a docstring that states these rules exactly, then `raise NotImplementedError("Ahmed types this")`:
+1. Bad TOML -> LadderError "<path>: not valid TOML: <reason>".
+2. Allowed top level keys: tasks, gates, review. Any other -> LadderError "<path>: unknown section \"<key>\"".
+3. tasks is a table of tables. Each task: `about` required non empty string; `run` required, a non empty string or a non empty list of non empty strings (a string becomes a 1 item tuple); `shell` optional, only "bash"; `confirm` optional bool. Any other key -> error naming it. Each error: LadderError "<path>: task \"<name>\": <problem>".
+4. A task name in CORE_JOBS -> LadderError "<path>: task \"<name>\" clashes with the core job \"<name>\", rename it".
+5. gates and review are kept as plain dicts (empty when missing); later tickets check them.
+</parser_interface>
+
+<parser_tests>
+tests/test_config.py, direct calls to parse() (it is a pure function, so direct tests are right here): 1 valid file with 2 tasks (one string run, one list run with shell and confirm) checked field by field; then 1 test per rule above, each with a known bad input and the exact error text. Also: missing tasks section gives an empty dict. These tests fail now with NotImplementedError; that is expected. Keep each test short and readable: the owner reads them as his spec.
+</parser_tests>
+
+<build_rest>
+Build against the interface; for your own CLI tests, use a fake that returns a ready Config (do not call parse in CLI tests, so they pass now).
+1. `main()` gains a config loader seam: `main(argv, runner, out, err, load_config=config.load)` loading from the current folder. A config error is the usual 1 line error, exit 1.
+2. `ladder list`: core jobs first (1 line each with a short about), then "Project tasks (from <path>):" and each task `name  about`, with "[needs --yes]" after confirm tasks. No file: say "no ladder.toml found" after the core jobs, exit 0.
+3. `ladder <task> [args...]`: any first word that is not a core job is a task name. Unknown name -> "unknown job or task \"<name>\"; run ladder list", exit 1. Tasks run with the working folder set to the folder that holds ladder.toml.
+   - No shell: each run line is split with shlex.split (posix=True) and streamed through the runner.
+   - shell = "bash": runner streams ["bash", "-c", line].
+   - A list run executes in order and stops at the first non zero exit, printing "ladder: step N of M failed (exit X)" on err; the exit code is that step's code.
+   - Extra args: allowed only when run has 1 line; they are appended (no shell: as extra argv items; bash: shlex.join appended to the line). With more than 1 line and extra args -> plain error.
+   - confirm = true: refuse unless "--yes" is among the extra args: "task \"<name>\" needs --yes", exit 1. When present, "--yes" is still passed through (owner scripts take their own --yes).
+4. Runner: `stream(argv, cwd=None)` gains a cwd. A program name that contains a path separator ("./run.sh", "tools/x") is resolved against cwd, not PATH, and must exist; plain names keep the PATH only lookup.
+5. doctor: an extra line "ok   ladder.toml: <path> (<n> tasks)" or "ok   ladder.toml: none in this repo" or "FAIL ladder.toml: <error>". doctor catches NotImplementedError from the stub as a FAIL line too, so doctor keeps working until the owner finishes.
+6. help text lists the new `list` job and "<task> [args]".
+7. README: a short ladder.toml section with 1 example task.
+</build_rest>
+
+<rules>
+- Approved; proceed without asking. Stop only for new scope.
+- Test first. Do NOT commit or push. Touch only this repo. Do not edit docs/ or .scratch/.
+- No scratch folders inside the repo; use the system temp dir.
+- Target under 300 changed lines in src (tests not counted).
+- Final state: `python -m unittest discover -s tests -t .` passes everything EXCEPT the tests in tests/test_config.py for parse(), which fail with NotImplementedError. Report the exact counts.
+</rules>
+
+<report>
+Files changed, test counts (passed, failed, which failed), and every choice the brief did not specify.
+</report>

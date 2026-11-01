@@ -1,0 +1,22 @@
+<goal>
+Finish ticket 02 of `ladder` (this repo, Python 3.12, stdlib only). Two jobs.
+</goal>
+
+<job_1>
+Implement `parse(text, path)` in src/ladder/config.py, replacing the NotImplementedError stub. Its docstring states the rules; tests/test_config.py is the spec. Make all of tests/test_config.py pass without changing those tests. Keep it plain and readable, about 40 to 60 lines: the owner is learning Python and will read it as an example, so prefer small helper functions with clear names over clever code. Use tomllib.
+</job_1>
+
+<job_2>
+Gap: a task with more than 1 run line and confirm = true can never run, because it needs --yes but extra args are refused for multi line tasks.
+New rule: `--yes` is ladder's own confirmation flag. For a multi line task, `--yes` is accepted, satisfies confirm, and is NOT passed to any step; any other extra arg is still refused. For a single line task nothing changes: `--yes` satisfies confirm and is still passed through.
+Test first through main(): multi line confirm task runs with --yes and no step gets --yes; without --yes it is refused; with --yes plus another arg it is refused.
+</job_2>
+
+<rules>
+- Approved; proceed without asking. Do NOT commit or push. Touch only this repo; do not edit docs/ or .scratch/. No scratch folders inside the repo.
+- Final: `python -m unittest discover -s tests -t .` passes with 0 failures and 0 errors. Report the counts.
+</rules>
+
+<report>
+Files changed, test counts, any choice the brief did not specify.
+</report>

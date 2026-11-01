@@ -60,7 +60,7 @@ class FakeRunner:
 class CliTests(unittest.TestCase):
     def invoke(self, argv, answers=None):
         out, err = io.StringIO(), io.StringIO()
-        code = main(argv, FakeRunner(out, answers), out, err)
+        code = main(argv, FakeRunner(out, answers), out, err, load_config=lambda start: None)
         return code, out.getvalue(), err.getvalue()
 
     def test_help_lists_ticket_commands(self):
@@ -68,8 +68,25 @@ class CliTests(unittest.TestCase):
             with self.subTest(argv=argv):
                 code, out, err = self.invoke(argv)
                 self.assertEqual((code, err), (0, ""))
-                for command in ("help", "doctor", "pr comments"):
+                for command in ("help", "list", "doctor", "pr comments", "<task> [args]"):
                     self.assertIn(command, out)
+
+    def test_help_and_pr_do_not_read_project_config(self):
+        def broken_config(start):
+            raise LadderError("broken config")
+
+        for argv in (["help"], ["pr", "comments", "82"]):
+            with self.subTest(argv=argv):
+                out, err = io.StringIO(), io.StringIO()
+                code = main(argv, FakeRunner(out, {COMMAND: THREADS}), out, err, broken_config)
+                self.assertEqual((code, err.getvalue()), (0, ""))
+
+    def test_future_core_jobs_are_reserved(self):
+        for name in ("gates", "init", "install-skill"):
+            with self.subTest(name=name):
+                code, out, err = self.invoke([name])
+                self.assertEqual((code, out), (1, ""))
+                self.assertEqual(err, f'ladder: core job "{name}" is not implemented yet\n')
 
     def test_invalid_arguments_give_one_plain_error(self):
         for argv in (["nope"], ["pr"], ["pr", "comments", "bad"],

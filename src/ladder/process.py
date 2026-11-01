@@ -31,8 +31,13 @@ class Runner:
     def __init__(self, out):
         self.out = out
 
-    def _argv(self, argv):
+    def _argv(self, argv, cwd=None):
         print("$ " + redact(shlex.join(argv)).replace("\n", "\\n"), file=self.out, flush=True)
+        if "/" in argv[0] or "\\" in argv[0]:
+            program = os.path.abspath(os.path.join(cwd or os.getcwd(), argv[0]))
+            if not os.path.isfile(program):
+                raise LadderError(f"{plain(argv[0])}: not found")
+            return [program, *argv[1:]]
         directories = [directory for directory in os.environ.get("PATH", "").split(os.pathsep)
                        if os.path.isabs(directory)
                        and (os.name != "nt" or os.path.splitdrive(directory)[0])]
@@ -70,11 +75,11 @@ class Runner:
         captured = self._capture(argv)
         return captured.returncode, captured.stdout
 
-    def stream(self, argv) -> int:
-        command = self._argv(argv)
+    def stream(self, argv, cwd=None) -> int:
+        command = self._argv(argv, cwd)
         try:
             with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                  text=True, encoding="utf-8", errors="replace") as child:
+                                  text=True, encoding="utf-8", errors="replace", cwd=cwd) as child:
                 for line in child.stdout:
                     print(redact(line), file=self.out, end="", flush=True)
                 return child.wait()

@@ -6,6 +6,19 @@ import traceback
 
 from .process import LadderError, Runner, plain, redact
 from .pr import comments
+from . import config
+from .tasks import run_task
+
+
+CORE_ABOUT = {
+    "help": "show available commands",
+    "list": "show core jobs and project tasks",
+    "doctor": "check tools, sign in, Python, and ladder.toml",
+    "pr": "read PR review threads",
+    "gates": "run project checks (not implemented yet)",
+    "init": "create a project file (not implemented yet)",
+    "install-skill": "install agent guidance (not implemented yet)",
+}
 
 
 class Parser(argparse.ArgumentParser):
@@ -20,9 +33,10 @@ def pr_number(text):
 
 
 def arguments():
-    parser = Parser(prog="ladder", description="help | doctor | pr comments")
+    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | <task> [args]")
     jobs = parser.add_subparsers(dest="job")
     jobs.add_parser("help", help="show available commands")
+    jobs.add_parser("list", help=CORE_ABOUT["list"])
     jobs.add_parser("doctor", help="check git, gh, sign in, and Python")
     pr = jobs.add_parser("pr", help="read PR review threads")
     commands = pr.add_subparsers(dest="command", required=True)
@@ -30,6 +44,8 @@ def arguments():
     comments.add_argument("number", type=pr_number, metavar="PR number")
     comments.add_argument("--all", action="store_true", help="include resolved threads")
     comments.add_argument("--full", action="store_true", help="keep whole comment bodies")
+    for name in ("gates", "init", "install-skill"):
+        jobs.add_parser(name, help=CORE_ABOUT[name])
     return parser
 
 
@@ -42,7 +58,28 @@ def check_version(runner, program):
     return code, label
 
 
-def doctor(runner, out):
+def config_check(load_config):
+    try:
+        project = load_config(os.getcwd())
+    except (LadderError, NotImplementedError) as error:
+        return 1, str(error)
+    label = f"{project.path} ({len(project.tasks)} tasks)" if project is not None else "none in this repo"
+    return 0, label
+
+
+def list_jobs(project, out):
+    for name in config.CORE_JOBS:
+        print(f"{name}  {CORE_ABOUT[name]}", file=out)
+    if project is None:
+        print("no ladder.toml found", file=out)
+        return
+    print(f"Project tasks (from {plain(project.path)}):", file=out)
+    for task in project.tasks.values():
+        suffix = " [needs --yes]" if task.confirm else ""
+        print(f"{plain(task.name)}  {plain(task.about)}{suffix}", file=out)
+
+
+def doctor(runner, out, load_config):
     failed = 0
     for program in ("git", "gh"):
         code, label = check_version(runner, program)
@@ -57,21 +94,30 @@ def doctor(runner, out):
     old_python = sys.version_info[:2] < (3, 12)
     failed += old_python
     print(f"{'FAIL' if old_python else 'ok  '} Python {'.'.join(map(str, sys.version_info[:3]))}", file=out)
+    code, label = config_check(load_config)
+    failed += code != 0
+    print(f"{'FAIL' if code else 'ok  '} ladder.toml: {plain(label)}", file=out)
     print(f"doctor: {failed} check(s) failed" if failed else "doctor: all checks passed", file=out)
     return int(failed != 0)
 
 
-def main(argv, runner, out, err) -> int:
+def main(argv, runner, out, err, load_config=config.load) -> int:
     try:
+        if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
+            return run_task(load_config(os.getcwd()), argv, runner, err)
         parser = arguments()
         with redirect_stdout(out):
             args = parser.parse_args(argv)
         if args.job in (None, "help"):
             parser.print_help(out)
         elif args.job == "doctor":
-            return doctor(runner, out)
+            return doctor(runner, out, load_config)
+        elif args.job == "list":
+            list_jobs(load_config(os.getcwd()), out)
         elif args.job == "pr":
             comments(args, runner, out)
+        else:
+            raise LadderError(f'core job "{args.job}" is not implemented yet')
         return 0
     except SystemExit as error:
         return error.code
