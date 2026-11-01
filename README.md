@@ -26,6 +26,7 @@ ladder help
 ladder list
 ladder doctor
 ladder pr comments 82
+ladder pr wait-review 82
 ladder gates --dry-run
 ladder gates
 ladder init
@@ -69,6 +70,38 @@ run = ["python -m unittest discover -s tests -t ."]
 Tasks and gates print `ladder: using <path>` to standard error before the steps.
 This includes dry runs. Exit 0 means success.
 Failed steps return their exit code; input errors exit 1.
+
+### Wait for reviews
+
+Choose the GitHub logins to wait for:
+
+```toml
+[review]
+wait_for = ["review-bot", "reviewer"]
+```
+
+Run `ladder pr wait-review 82`. A review must name the newest commit.
+Any review state except `PENDING` counts, including `CHANGES_REQUESTED`.
+Login matching ignores case. This checks that a review was posted, not that it approved the PR.
+Use `--bot reviewer` to replace the config list. Repeat `--bot` to wait for several logins.
+Set `--timeout-mins N` to a whole number >= 1. The default is 20 min.
+
+Ladder polls every 30 s. Status lines show the first 7 characters of the commit:
+
+```text
+abcdef0: waiting for review-bot, reviewer
+abcdef0: waiting for reviewer
+abcdef0: done: review-bot (COMMENTED), reviewer (APPROVED)
+```
+
+Status lines appear only when the state changes. A new commit gets a `head changed:` line,
+and ladder checks reviews for that commit. All reviewers done exits 0.
+Timeout exits 1 and names the logins still missing and the commit.
+An empty or missing list stops without polling:
+
+```text
+ladder: no reviewer set: add [review] wait_for = ["login"] to ladder.toml or pass --bot
+```
 
 ### Set up a repo and agents
 

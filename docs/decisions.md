@@ -38,7 +38,9 @@ Agreed with Ahmed in a grilling session on 2026-11-01. Each line is a decision, 
 ## Facts checked, not decisions
 
 * The work laptop is this PC (`AHMED-YZH`): Windows 11 Pro, Python 3.12.10, `gh` 2.98.0, Codex 0.164.0. Checked 2026-11-01.
-* Codex skill folders on this PC: `~/.codex/skills` and `~/.agents/skills` both exist and hold skills. Not tested: that Codex loads `~/.agents/skills` without being told.
+* Codex skill folders on this PC: `~/.codex/skills` and `~/.agents/skills` both exist and hold skills.
+* Verified 2026-11-01 (Codex 0.164.0): a fresh `codex exec` session listed `ladder` among its loaded skills, with its description, after `ladder install-skill`. It also quoted the rule from the `~/.codex/AGENTS.md` section. So Codex loads `~/.agents/skills` by itself.
+* In that same run, `ladder` was not on Codex's PATH, because the run inherited a PATH from before the install. A program started before the PATH change (the Codex app, an open terminal) must be restarted to find `ladder`.
 * The main company project has no review bot on its PRs today (8 PRs checked).
 
 ## Still unknown

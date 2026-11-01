@@ -2,6 +2,7 @@ import argparse
 from contextlib import redirect_stdout
 import os
 import sys
+import time
 import traceback
 
 from .process import LadderError, Runner, plain, redact
@@ -10,13 +11,14 @@ from . import config
 from .tasks import run_task
 from .gates import run_gates, warn_ci
 from .setup import init, install_skill
+from .review import ReviewWait, review_logins
 
 
 CORE_ABOUT = {
     "help": "show available commands",
     "list": "show core jobs and project tasks",
     "doctor": "check tools, sign in, Python, and ladder.toml",
-    "pr": "read PR review threads",
+    "pr": "read PR review threads or wait for reviews",
     "gates": "run project checks",
     "init": "create a project file",
     "install-skill": "install agent guidance",
@@ -34,18 +36,40 @@ def pr_number(text):
     return int(text)
 
 
+def timeout_minutes(text):
+    message = "must be a whole number >= 1"
+    try:
+        if text.isascii() and text.isdecimal() and int(text) >= 1:
+            return int(text)
+    except ValueError:
+        pass
+    raise argparse.ArgumentTypeError(message)
+
+
+def reviewer_login(text):
+    if not text.strip():
+        raise argparse.ArgumentTypeError("must be a non empty login")
+    return text.strip()
+
+
 def arguments():
-    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | <task> [args]")
+    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | <task> [args]")
     jobs = parser.add_subparsers(dest="job")
     jobs.add_parser("help", help="show available commands")
     jobs.add_parser("list", help=CORE_ABOUT["list"])
     jobs.add_parser("doctor", help="check git, gh, sign in, and Python")
-    pr = jobs.add_parser("pr", help="read PR review threads")
+    pr = jobs.add_parser("pr", help=CORE_ABOUT["pr"])
     commands = pr.add_subparsers(dest="command", required=True)
     comments = commands.add_parser("comments", help="show review threads")
     comments.add_argument("number", type=pr_number, metavar="PR number")
     comments.add_argument("--all", action="store_true", help="include resolved threads")
     comments.add_argument("--full", action="store_true", help="keep whole comment bodies")
+    wait = commands.add_parser("wait-review", help="wait for reviews of the newest commit", allow_abbrev=False)
+    wait.add_argument("number", type=pr_number, metavar="PR number")
+    wait.add_argument("--bot", action="append", type=reviewer_login, metavar="LOGIN",
+                      help="replace configured reviewers; may be repeated")
+    wait.add_argument("--timeout-mins", type=timeout_minutes, default=20, metavar="N",
+                      help="whole number >= 1 (default: 20)")
     gates = jobs.add_parser("gates", help=CORE_ABOUT["gates"], allow_abbrev=False)
     gates.add_argument("--dry-run", action="store_true", help="print steps without running them")
     for name in ("init", "install-skill"):
@@ -107,7 +131,8 @@ def doctor(runner, out, load_config):
     return int(failed != 0)
 
 
-def main(argv, runner, out, err, load_config=config.load, *, home=None) -> int:
+def main(argv, runner, out, err, load_config=config.load, *, home=None,
+         clock=time.monotonic, sleep=time.sleep) -> int:
     try:
         if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
             return run_task(load_config(os.getcwd()), argv, runner, err)
@@ -121,7 +146,11 @@ def main(argv, runner, out, err, load_config=config.load, *, home=None) -> int:
         elif args.job == "list":
             list_jobs(load_config(os.getcwd()), out)
         elif args.job == "pr":
-            comments(args, runner, out)
+            if args.command == "comments":
+                comments(args, runner, out)
+            else:
+                args.reviewers = review_logins(load_config(os.getcwd()), args.bot)
+                ReviewWait(clock, sleep).wait(args, runner, out)
         elif args.job == "gates":
             project = load_config(os.getcwd())
             if project is None or not project.gates:

@@ -1,0 +1,37 @@
+<goal>
+In this repo (`ladder`, Python 3.12, stdlib only): build ticket 05, `ladder pr wait-review`. Test first.
+</goal>
+
+<read_first>
+docs/decisions.md (D16), docs/spec.md, .scratch/ladder/issues/05-wait-review.md, .scratch/werdy-ref/pr.rs (wait_review there polls a CodeRabbit check run; ours is different, see below), and all of src/ladder and tests/.
+</read_first>
+
+<config>
+`[review]` in ladder.toml: `wait_for` optional list of non empty strings (GitHub logins). Any other key: error "<path>: review: unknown key \"<key>\"". Wrong type: plain error naming review.wait_for. Validate in parse(), keep it readable, expose on Config.
+</config>
+
+<command>
+`ladder pr wait-review <n> [--bot LOGIN] [--timeout-mins N]`.
+- Reviewers: `--bot` (may be given more than once) replaces the config list; otherwise [review] wait_for. Empty or missing -> at once: `no reviewer set: add [review] wait_for = ["login"] to ladder.toml or pass --bot`, exit 1. No sleeping at all in that case.
+- --timeout-mins: whole number >= 1, default 20.
+- Each poll: head commit with `gh pr view <n> --json headRefOid -q .headRefOid`; reviews with `gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate`. A login counts as done when it has a review whose commit_id equals the head commit (any state except PENDING). Login compare is case insensitive.
+- Print a status line only when the state changes: `<short sha>: waiting for <login, login>` or `<short sha>: done: <login> (<STATE>), ...`. When the head commit changes between polls, say so and keep waiting for the new commit.
+- All done -> exit 0 with the final done line. Timeout -> `ladder: timed out after N min; still waiting for <logins> on <short sha>`, exit 1.
+- Poll every 30 s. Time and sleep come through a seam (for example main gets `clock` and `sleep` parameters with real defaults) so tests run instantly and assert the sleeps requested.
+- Parse the reviews JSON in a pure function; bad JSON or a missing field gives a plain error. --paginate can return several JSON arrays back to back; handle that (concatenated arrays like `[...][...]`).
+</command>
+
+<tests>
+Through main() with the FakeRunner and fake clock and sleep: no reviewer set (no runner calls, no sleep); 1 login done at once; 2 logins where 1 finishes on the 2nd poll; a review on an older commit does not count; head commit changes mid wait; timeout; --bot overrides config; case insensitive login; PENDING does not count; paginated output with 2 arrays. Parser tests for [review].
+Update SKILL.md: remove "Coming soon" from wait-review and describe its output in 1 or 2 lines. Update README.
+</tests>
+
+<rules>
+- Approved; proceed without asking. Do NOT commit or push. Touch only this repo; do not edit docs/ or .scratch/. No scratch folders inside the repo.
+- Under 250 changed lines in src.
+- Final: `python -m unittest discover -s tests -t .` passes with 0 failures and 0 errors.
+</rules>
+
+<report>
+Files changed, test counts, every choice the brief did not specify.
+</report>

@@ -61,7 +61,7 @@ def parse(text: str, path: str) -> Config:
     5. gates accepts optional string about, required run (same rules as tasks),
        and optional non empty relative ci path. Unknown keys are errors.
        Missing gates is an empty dict; present gates has run as a tuple.
-       Review is kept without validation.
+       Review accepts only optional wait_for, a list of non empty strings.
     '''
     try:
         sections = tomllib.loads(text)
@@ -77,7 +77,16 @@ def parse(text: str, path: str) -> Config:
     for name, settings in task_tables.items():
         tasks[name] = parse_task(settings, name, path)
     gates = parse_gates(sections["gates"], path) if "gates" in sections else {}
-    return Config(path, tasks, gates, sections.get("review", {}))
+    review = sections.get("review", {})
+    if not isinstance(review, dict):
+        raise LadderError(f"{path}: review: must be a table")
+    for key in review:
+        if key != "wait_for":
+            raise LadderError(f'{path}: review: unknown key "{key}"')
+    wait_for = review.get("wait_for", [])
+    if not isinstance(wait_for, list) or not all(non_empty_text(login) for login in wait_for):
+        raise LadderError(f"{path}: review.wait_for must be a list of non empty strings")
+    return Config(path, tasks, gates, review)
 
 
 def non_empty_text(text):

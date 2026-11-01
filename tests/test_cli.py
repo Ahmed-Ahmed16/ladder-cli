@@ -50,6 +50,8 @@ class FakeRunner:
         self.commands.append(argv)
         print("$ " + shlex.join(argv).replace("\n", "\\n"), file=self.out)
         answer = self.answers[tuple(argv)]
+        if isinstance(answer, list):
+            answer = answer.pop(0)
         if isinstance(answer, Exception):
             raise answer
         return answer

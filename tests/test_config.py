@@ -92,10 +92,36 @@ confirm = true
                 self.assert_bad(f'[tasks.{name}]\nabout = "Run tests"\nrun = "echo hi"',
                                 f'task "{name}" clashes with the core job "{name}", rename it')
 
-    def test_gates_are_validated_while_review_is_kept(self):
-        config = parse('[gates]\nrun = "check"\n[review]\nwait_for = "later"', "ladder.toml")
+    def test_gates_and_review_are_exposed(self):
+        config = parse('[gates]\nrun = "check"\n[review]\nwait_for = ["reviewer"]', "ladder.toml")
         self.assertEqual(config.gates, {"run": ("check",)})
-        self.assertEqual(config.review, {"wait_for": "later"})
+        self.assertEqual(config.review, {"wait_for": ["reviewer"]})
+
+    def test_review_allows_missing_empty_and_multiple_logins(self):
+        # Cases: missing table, missing key, empty list, 1 login, several logins.
+        for text, expected in (("", {}), ("[review]", {}),
+                               ('[review]\nwait_for = []', {"wait_for": []}),
+                               ('[review]\nwait_for = ["Bot", "person"]',
+                                {"wait_for": ["Bot", "person"]})):
+            with self.subTest(text=text):
+                self.assertEqual(parse(text, "ladder.toml").review, expected)
+
+    def test_review_must_be_a_table(self):
+        for setting in ('[]', 'true', '"reviewer"'):
+            with self.subTest(setting=setting):
+                self.assert_bad('review = ' + setting, 'review: must be a table')
+
+    def test_review_rejects_unknown_keys(self):
+        self.assert_bad('[review]\nwait_for = []\nbot = "person"',
+                        'review: unknown key "bot"')
+
+    def test_review_wait_for_must_be_a_list_of_non_empty_strings(self):
+        # Cases: scalar, wrong member type, empty member, whitespace member, nested list.
+        for setting in ('"reviewer"', '42', 'true', '{}', '[42]', '[false]',
+                        '[""]', '["  "]', '["reviewer", ""]', '[["reviewer"]]'):
+            with self.subTest(setting=setting):
+                self.assert_bad('[review]\nwait_for = ' + setting,
+                                'review.wait_for must be a list of non empty strings')
 
     def test_gate_steps_and_optional_fields_are_exposed(self):
         for run, expected in (('"check"', ("check",)),
