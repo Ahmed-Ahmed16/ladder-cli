@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from ladder.config import Config, find, load
+from ladder.config import find, load
 from ladder.process import LadderError
 
 
@@ -56,34 +56,15 @@ class ConfigFileTests(unittest.TestCase):
                 self.assertIsNone(find(str(child)))
                 self.assertIsNone(load(str(child)))
 
-    def test_search_stops_at_filesystem_root(self):
-        with patch("ladder.config.Path.is_file", return_value=False):
-            with patch("ladder.config.Path.exists", return_value=False):
-                self.assertIsNone(find(Path.cwd().anchor))
-
-    def test_load_reads_utf8_and_passes_text_and_path_to_parser(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory).resolve() / "ladder.toml"
-            (path.parent / ".git").mkdir()
-            text = '# caf\u00e9\n'
-            path.write_text(text, encoding="utf-8")
-            expected = Config(str(path), {}, {}, {})
-            # Check the file input separately from parsing its contents.
-            def parser(received_text, received_path):
-                self.assertEqual((received_text, received_path), (text, str(path)))
-                return expected
-
-            with patch("ladder.config.parse", parser):
-                self.assertEqual(load(directory), expected)
-
     def test_load_parses_tasks_from_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory).resolve() / "ladder.toml"
             (path.parent / ".git").mkdir()
-            path.write_text('[tasks.test]\nabout = "Run tests"\nrun = "python tests.py"',
+            path.write_text('[tasks.test]\nabout = "Run caf\u00e9 tests"\nrun = "python tests.py"',
                             encoding="utf-8")
             config = load(directory)
             self.assertEqual(config.path, str(path))
+            self.assertEqual(config.tasks["test"].about, "Run caf\u00e9 tests")
             self.assertEqual(config.tasks["test"].run, ("python tests.py",))
 
     def test_unreadable_or_invalid_utf8_file_names_path(self):

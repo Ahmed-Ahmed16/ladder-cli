@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from ladder.cli import main
+from ladder.cli import Context, main
 from ladder.config import load, parse
 from tests.test_cli import FakeRunner
 
@@ -23,7 +23,7 @@ class SetupCase:
     def invoke(self, *argv, start=None):
         out, err = io.StringIO(), io.StringIO()
         with patch("os.getcwd", return_value=str(start or self.child)):
-            code = main(list(argv), FakeRunner(out), out, err, home=self.home)
+            code = main(list(argv), Context(FakeRunner(out), out, err, home=self.home))
         return code, out.getvalue(), err.getvalue()
 
 

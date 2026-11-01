@@ -1,9 +1,12 @@
 import argparse
 from contextlib import redirect_stdout
+from dataclasses import dataclass
 import os
+from pathlib import Path
 import sys
 import time
 import traceback
+from typing import Callable, TextIO
 
 from .process import LadderError, Runner, plain, redact
 from .pr import comments
@@ -14,15 +17,18 @@ from .setup import init, install_skill
 from .review import ReviewWait, review_logins
 
 
-CORE_ABOUT = {
-    "help": "show available commands",
-    "list": "show core jobs and project tasks",
-    "doctor": "check tools, sign in, Python, and ladder.toml",
-    "pr": "read PR review threads or wait for reviews",
-    "gates": "run project checks",
-    "init": "create a project file",
-    "install-skill": "install agent guidance",
-}
+@dataclass(frozen=True)
+class Context:
+    runner: Runner
+    out: TextIO
+    err: TextIO
+    load_config: Callable[[str], config.Config | None] = config.load
+    home: Path | None = None
+    clock: Callable[[], float] = time.monotonic
+    sleep: Callable[[float], None] = time.sleep
+
+    def project(self):
+        return self.load_config(os.getcwd())
 
 
 class Parser(argparse.ArgumentParser):
@@ -37,13 +43,11 @@ def pr_number(text):
 
 
 def timeout_minutes(text):
-    message = "must be a whole number >= 1"
-    try:
-        if text.isascii() and text.isdecimal() and int(text) >= 1:
-            return int(text)
-    except ValueError:
-        pass
-    raise argparse.ArgumentTypeError(message)
+    digit_limit = sys.get_int_max_str_digits()
+    if (text.isascii() and text.isdecimal()
+            and (digit_limit == 0 or len(text) <= digit_limit) and int(text) >= 1):
+        return int(text)
+    raise argparse.ArgumentTypeError("must be a whole number >= 1")
 
 
 def reviewer_login(text):
@@ -55,10 +59,10 @@ def reviewer_login(text):
 def arguments():
     parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | <task> [args]")
     jobs = parser.add_subparsers(dest="job")
-    jobs.add_parser("help", help="show available commands")
-    jobs.add_parser("list", help=CORE_ABOUT["list"])
-    jobs.add_parser("doctor", help="check git, gh, sign in, and Python")
-    pr = jobs.add_parser("pr", help=CORE_ABOUT["pr"])
+    job_parsers = {name: jobs.add_parser(name, help=config.CORE_JOBS[name],
+                                       allow_abbrev=name != "gates")
+                   for name in config.CORE_JOBS}
+    pr = job_parsers["pr"]
     commands = pr.add_subparsers(dest="command", required=True)
     comments = commands.add_parser("comments", help="show review threads")
     comments.add_argument("number", type=pr_number, metavar="PR number")
@@ -70,10 +74,8 @@ def arguments():
                       help="replace configured reviewers; may be repeated")
     wait.add_argument("--timeout-mins", type=timeout_minutes, default=20, metavar="N",
                       help="whole number >= 1 (default: 20)")
-    gates = jobs.add_parser("gates", help=CORE_ABOUT["gates"], allow_abbrev=False)
+    gates = job_parsers["gates"]
     gates.add_argument("--dry-run", action="store_true", help="print steps without running them")
-    for name in ("init", "install-skill"):
-        jobs.add_parser(name, help=CORE_ABOUT[name])
     return parser
 
 
@@ -86,10 +88,10 @@ def check_version(runner, program):
     return code, label
 
 
-def config_check(load_config):
+def config_check(context):
     try:
-        project = load_config(os.getcwd())
-    except (LadderError, NotImplementedError) as error:
+        project = context.project()
+    except LadderError as error:
         return 1, str(error)
     label = f"{project.path} ({len(project.tasks)} tasks)" if project is not None else "none in this repo"
     return 0, label
@@ -97,8 +99,8 @@ def config_check(load_config):
 
 def list_jobs(project, out):
     width = max(map(len, config.CORE_JOBS))
-    for name in config.CORE_JOBS:
-        print(f"{name:<{width}}  {CORE_ABOUT[name]}", file=out)
+    for name, about in config.CORE_JOBS.items():
+        print(f"{name:<{width}}  {about}", file=out)
     if project is None:
         print("no ladder.toml found", file=out)
         return
@@ -109,7 +111,8 @@ def list_jobs(project, out):
         print(f"{plain(task.name):<{width}}  {plain(task.about)}{suffix}", file=out)
 
 
-def doctor(runner, out, load_config):
+def doctor(context):
+    runner, out = context.runner, context.out
     failed = 0
     for program in ("git", "gh"):
         code, label = check_version(runner, program)
@@ -124,56 +127,85 @@ def doctor(runner, out, load_config):
     old_python = sys.version_info[:2] < (3, 12)
     failed += old_python
     print(f"{'FAIL' if old_python else 'ok  '} Python {'.'.join(map(str, sys.version_info[:3]))}", file=out)
-    code, label = config_check(load_config)
+    code, label = config_check(context)
     failed += code != 0
     print(f"{'FAIL' if code else 'ok  '} ladder.toml: {plain(label)}", file=out)
     print(f"doctor: {failed} check(s) failed" if failed else "doctor: all checks passed", file=out)
     return int(failed != 0)
 
 
-def main(argv, runner, out, err, load_config=config.load, *, home=None,
-         clock=time.monotonic, sleep=time.sleep) -> int:
+def help_job(args, context):
+    arguments().print_help(context.out)
+    return 0
+
+
+def doctor_job(args, context):
+    return doctor(context)
+
+
+def list_job(args, context):
+    list_jobs(context.project(), context.out)
+    return 0
+
+
+def pr_job(args, context):
+    if args.command == "comments":
+        comments(args, context.runner, context.out)
+    else:
+        args.reviewers = review_logins(context.project(), args.bot)
+        ReviewWait(context.clock, context.sleep).wait(args, context.runner, context.out)
+    return 0
+
+
+def gates_job(args, context):
+    project = context.project()
+    if project is None or not project.gates:
+        raise LadderError("no [gates] in ladder.toml")
+    print(f"ladder: using {plain(project.path)}", file=context.err, flush=True)
+    warn_ci(project, context.err)
+    return run_gates(args, project, context.runner, context.out)
+
+
+def init_job(args, context):
+    init(os.getcwd(), context.out)
+    return 0
+
+
+def install_skill_job(args, context):
+    install_skill(context.out, context.home)
+    return 0
+
+
+JOBS = {
+    "help": help_job,
+    "list": list_job,
+    "doctor": doctor_job,
+    "pr": pr_job,
+    "gates": gates_job,
+    "init": init_job,
+    "install-skill": install_skill_job,
+}
+
+
+def main(argv, context) -> int:
     try:
         if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
-            return run_task(load_config(os.getcwd()), argv, runner, err)
+            return run_task(context.project(), argv, context.runner, context.err)
         parser = arguments()
-        with redirect_stdout(out):
+        with redirect_stdout(context.out):
             args = parser.parse_args(argv)
-        if args.job in (None, "help"):
-            parser.print_help(out)
-        elif args.job == "doctor":
-            return doctor(runner, out, load_config)
-        elif args.job == "list":
-            list_jobs(load_config(os.getcwd()), out)
-        elif args.job == "pr":
-            if args.command == "comments":
-                comments(args, runner, out)
-            else:
-                args.reviewers = review_logins(load_config(os.getcwd()), args.bot)
-                ReviewWait(clock, sleep).wait(args, runner, out)
-        elif args.job == "gates":
-            project = load_config(os.getcwd())
-            if project is None or not project.gates:
-                raise LadderError("no [gates] in ladder.toml")
-            print(f"ladder: using {plain(project.path)}", file=err, flush=True)
-            warn_ci(project, err)
-            return run_gates(args, project, runner, out)
-        elif args.job == "init":
-            init(os.getcwd(), out)
-        elif args.job == "install-skill":
-            install_skill(out, home)
-        return 0
+        return JOBS[args.job or "help"](args, context)
     except SystemExit as error:
         return error.code
     except LadderError as error:
-        print(f"ladder: {plain(str(error))}", file=err)
+        print(f"ladder: {plain(str(error))}", file=context.err)
         return 1
     except Exception as error:
-        print(f"ladder: {plain(str(error)) or type(error).__name__}", file=err)
+        print(f"ladder: {plain(str(error)) or type(error).__name__}", file=context.err)
         if os.environ.get("LADDER_DEBUG") == "1":
-            print(redact(traceback.format_exc()), file=err, end="")
+            print(redact(traceback.format_exc()), file=context.err, end="")
         return 1
 
 
 def run():
-    sys.exit(main(sys.argv[1:], Runner(sys.stdout), sys.stdout, sys.stderr))
+    sys.exit(main(sys.argv[1:], Context(Runner(sys.stdout), sys.stdout, sys.stderr)))

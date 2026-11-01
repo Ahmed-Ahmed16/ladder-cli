@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from ladder.cli import main
+from ladder.cli import Context, main
 from ladder.config import load
 from ladder.process import Runner
 from tests.test_tasks import TaskRunner
@@ -34,7 +34,7 @@ class GatesCliTests(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         runner = TaskRunner(out, codes)
         with patch("os.getcwd", return_value=str(self.root / "nested")):
-            code = main(["gates", *args], runner, out, err)
+            code = main(["gates", *args], Context(runner, out, err))
         return code, out.getvalue(), err.getvalue(), runner.steps
 
     def test_missing_file_or_section_is_a_plain_error(self):
@@ -118,7 +118,8 @@ class GatesCliTests(unittest.TestCase):
             '[gates]\nci = "ci.yml"\nrun = ["first", "second", "third"]', encoding="utf-8")
         combined = io.StringIO()
         runner = TaskRunner(combined, (0, 0, 0))
-        code = main(["gates"], runner, combined, combined, lambda _: load(self.root))
+        code = main(["gates"], Context(runner, combined, combined,
+                                     load_config=lambda _: load(self.root)))
         self.assertEqual(code, 0)
         self.assertEqual(combined.getvalue().splitlines()[:4],
                          [self.using.strip(), "warning: gate step 1 not found in ci.yml: first",
@@ -162,7 +163,8 @@ class GatesCliTests(unittest.TestCase):
                 (self.root / "ladder.toml").write_text(
                     '[gates]\nrun = ' + json.dumps([line, line]), encoding="utf-8")
                 out, err = io.StringIO(), io.StringIO()
-                code = main(["gates"], Runner(out), out, err, lambda _: load(self.root))
+                code = main(["gates"], Context(Runner(out), out, err,
+                                             load_config=lambda _: load(self.root)))
                 self.assertEqual((code, err.getvalue()), (status, self.using))
                 child_output = self.root.name + f"\n['{status}', '|', 'literal']\n"
                 self.assertEqual(out.getvalue().count(child_output), 1 if status else 2)
@@ -172,7 +174,8 @@ class GatesCliTests(unittest.TestCase):
     def test_missing_program_reports_start_failure_without_success(self):
         (self.root / "ladder.toml").write_text('[gates]\nrun = "./missing-program"', encoding="utf-8")
         out, err = io.StringIO(), io.StringIO()
-        code = main(["gates"], Runner(out), out, err, lambda _: load(self.root))
+        code = main(["gates"], Context(Runner(out), out, err,
+                                     load_config=lambda _: load(self.root)))
         self.assertEqual(code, 1)
         self.assertEqual(err.getvalue(), self.using + "ladder: ./missing-program: not found\n")
         self.assertTrue(out.getvalue().endswith("FAIL step 1 of 1: ./missing-program (exit 1)\n"))

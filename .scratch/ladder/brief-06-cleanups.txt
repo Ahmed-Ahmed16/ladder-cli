@@ -1,0 +1,31 @@
+<goal>
+Refactor `ladder` (this repo, Python 3.12, stdlib only) to fix 8 review findings. This is a refactor: observable behavior must stay exactly the same (same output text, same exit codes, same errors), except where a finding says otherwise. If you find a bug, report it; do not fix it in this change.
+</goal>
+
+<read_first>
+All of src/ladder and tests/. Run `python -m unittest discover -s tests -t .` first and note the count (119 now).
+</read_first>
+
+<production_findings>
+1. cli.main() takes 8 parameters and is a long if/elif chain over jobs; `load_config(os.getcwd())` repeats 4 times. Split each job into its own small function and dispatch through a table from job name to function. Group the injected seams (runner, out, err, load_config, home, clock, sleep) into 1 small object (for example a frozen dataclass `Context`) so main has at most 4 parameters. Keep `run()` as the real entry point. Update the tests' calls to main accordingly, without weakening any assertion.
+2. Dead code: remove `NotImplementedError` from the except in cli config_check (the parser stub is gone); remove the unreachable try/except ValueError in timeout_minutes.
+3. The core job list lives in 3 places: config.CORE_JOBS, cli.CORE_ABOUT, and the argparse help strings, and they already disagree (doctor's argparse help omits ladder.toml). Keep 1 source: CORE_JOBS stays in config (the parser needs it for clash checks); the about text lives in 1 table that both `ladder list` and the argparse help strings read. After the fix, doctor's help and list text are the same string.
+4. review.ReviewWait.wait() is about 35 lines doing fetch, parse, compare, print and timeout. Extract the "which reviewers are done on this head" step into a pure function and the status line building into another, so wait() reads as the loop only. Keep all output identical.
+5. process.path_program(): the check that returns None when the found program's folder equals the current folder and is not an allowed PATH folder can never fire, because only absolute PATH folders are searched. A mutation run deleting it left all tests green. Delete it (and the `allowed` set). Keep the PATH filtering that does the real work, and keep its existing tests.
+</production_findings>
+
+<test_findings>
+6. tests/test_config_files.py::test_load_reads_utf8_and_passes_text_and_path_to_parser replaces the internal parse() and asserts what it received (mocking an internal function). Delete it; test_load_parses_tasks_from_file covers the same path with the real parser. Make sure that remaining test also proves UTF-8 reading, for example with a non ASCII character in the about text that must come back intact.
+7. tests/test_config_files.py::test_search_stops_at_filesystem_root makes every path look empty, so it passes for any implementation. Delete it, or replace it with a test that can fail: a temp folder tree with no .git anywhere inside the temp root returns None. Only keep a replacement if you can name the bug it catches that no other test catches; otherwise just delete.
+8. tests/test_tasks.py::test_doctor_reports_config_errors_including_parser_stub tests the dead NotImplementedError path: keep only the LadderError case. And near copies: in tests/test_tasks.py merge test_multiple_steps_with_confirm_refuse_without_yes and test_multiple_steps_refuse_yes_with_another_arg into 1 table driven test with subTest; in tests/test_config.py, merge the short error tests that share setup and differ only in input and expected message into table driven tests with subTest. Every input and every expected message that exists today must still be checked after the merge.
+</test_findings>
+
+<rules>
+- Approved; proceed without asking. Do NOT commit or push. Touch only src/ and tests/ in this repo. No scratch folders inside the repo.
+- Test count may go down from merges and deletions; the set of checked inputs and messages must not shrink except for findings 6 and 7 and the stub case in 8. List every removed check in the report.
+- Final: `python -m unittest discover -s tests -t .` passes with 0 failures and 0 errors.
+</rules>
+
+<report>
+Files changed, test count before and after, every check removed and why, and every choice the brief did not specify.
+</report>

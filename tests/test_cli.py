@@ -4,7 +4,7 @@ import shlex
 import unittest
 from unittest.mock import patch
 
-from ladder.cli import main
+from ladder.cli import Context, main
 from ladder.process import LadderError
 from ladder.pr import summary
 
@@ -62,7 +62,8 @@ class FakeRunner:
 class CliTests(unittest.TestCase):
     def invoke(self, argv, answers=None):
         out, err = io.StringIO(), io.StringIO()
-        code = main(argv, FakeRunner(out, answers), out, err, load_config=lambda start: None)
+        code = main(argv, Context(FakeRunner(out, answers), out, err,
+                                 load_config=lambda start: None))
         return code, out.getvalue(), err.getvalue()
 
     def test_help_lists_ticket_commands(self):
@@ -73,6 +74,16 @@ class CliTests(unittest.TestCase):
                 for command in ("help", "list", "doctor", "pr comments", "<task> [args]"):
                     self.assertIn(command, out)
 
+    def test_doctor_about_text_matches_in_help_and_list(self):
+        about = "check tools, sign in, Python, and ladder.toml"
+        for argv in (["help"], ["list"]):
+            with self.subTest(argv=argv):
+                code, out, err = self.invoke(argv)
+                self.assertEqual((code, err), (0, ""))
+                doctor = next(line for line in out.splitlines()
+                              if line.strip().startswith("doctor "))
+                self.assertEqual(doctor.split(maxsplit=1)[1], about)
+
     def test_help_and_pr_do_not_read_project_config(self):
         def broken_config(start):
             raise LadderError("broken config")
@@ -80,7 +91,8 @@ class CliTests(unittest.TestCase):
         for argv in (["help"], ["pr", "comments", "82"]):
             with self.subTest(argv=argv):
                 out, err = io.StringIO(), io.StringIO()
-                code = main(argv, FakeRunner(out, {COMMAND: THREADS}), out, err, broken_config)
+                code = main(argv, Context(FakeRunner(out, {COMMAND: THREADS}), out, err,
+                                         load_config=broken_config))
                 self.assertEqual((code, err.getvalue()), (0, ""))
 
     def test_setup_commands_have_help_without_config_or_writes(self):

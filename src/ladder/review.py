@@ -39,6 +39,29 @@ def parse_reviews(answer):
     return reviews
 
 
+def finished_review_states(reviews, head):
+    return {review["user"]["login"].casefold(): review["state"]
+            for review in reviews
+            if review["commit_id"] == head and review["state"] != "PENDING"}
+
+
+def review_status(head, reviewers, states, waiting):
+    if waiting:
+        return f"{head[:7]}: waiting for {', '.join(waiting)}"
+    return f"{head[:7]}: done: " + ", ".join(
+        f"{login} ({states[key]})" for key, login in reviewers.items())
+
+
+def fetch_review_states(number, runner):
+    head = runner.capture(["gh", "pr", "view", str(number), "--json",
+                           "headRefOid", "-q", ".headRefOid"]).strip()
+    if not re.fullmatch(r"[0-9a-fA-F]+", head):
+        raise LadderError("gh returned a missing or invalid head commit")
+    answer = runner.capture(["gh", "api", f"repos/{{owner}}/{{repo}}/pulls/{number}/reviews",
+                             "--paginate"])
+    return head, finished_review_states(parse_reviews(answer), head)
+
+
 class ReviewWait:
     def __init__(self, clock, sleep):
         self.clock = clock
@@ -49,21 +72,11 @@ class ReviewWait:
         deadline = self.clock() + args.timeout_mins * 60
         last_head, last_line = None, None
         while True:
-            head = runner.capture(["gh", "pr", "view", str(args.number), "--json",
-                                   "headRefOid", "-q", ".headRefOid"]).strip()
-            if not re.fullmatch(r"[0-9a-fA-F]+", head):
-                raise LadderError("gh returned a missing or invalid head commit")
-            answer = runner.capture(["gh", "api", f"repos/{{owner}}/{{repo}}/pulls/{args.number}/reviews",
-                                     "--paginate"])
-            states = {review["user"]["login"].casefold(): review["state"]
-                      for review in parse_reviews(answer)
-                      if review["commit_id"] == head and review["state"] != "PENDING"}
+            head, states = fetch_review_states(args.number, runner)
             waiting = [login for key, login in args.reviewers.items() if key not in states]
             if last_head is not None and head != last_head:
                 print(f"head changed: {last_head[:7]} -> {head[:7]}", file=out, flush=True)
-            line = (f"{head[:7]}: waiting for {', '.join(waiting)}" if waiting else
-                    f"{head[:7]}: done: " + ", ".join(
-                        f"{login} ({states[key]})" for key, login in args.reviewers.items()))
+            line = review_status(head, args.reviewers, states, waiting)
             if head != last_head or line != last_line:
                 print(plain(line), file=out, flush=True)
             last_head, last_line = head, line

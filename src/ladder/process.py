@@ -50,10 +50,6 @@ def path_program(name):
         # A full candidate path prevents Windows from prepending the current folder.
         program = shutil.which(os.path.join(directory, name), path=search_path)
         if program is not None:
-            folder = os.path.normcase(os.path.realpath(os.path.dirname(program)))
-            allowed = {os.path.normcase(os.path.realpath(entry)) for entry in directories}
-            if folder == os.path.normcase(os.path.realpath(os.getcwd())) and folder not in allowed:
-                return None
             return program
     return None
 

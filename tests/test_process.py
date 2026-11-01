@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from ladder.cli import main
+from ladder.cli import Context, main
 from ladder.config import parse
 from ladder.process import LadderError, Runner
 
@@ -241,7 +241,8 @@ class BashRunnerTests(unittest.TestCase):
             child = popen.return_value.__enter__.return_value
             child.stdout = iter(["checked\n"])
             child.wait.return_value = 0
-            code = main(["check"], Runner(out), out, err, lambda _: project)
+            code = main(["check"], Context(Runner(out), out, err,
+                                         load_config=lambda _: project))
             self.assertEqual(popen.call_args.args[0], [str(bash), "-c", "echo hi | cat"])
             self.assertEqual(popen.call_args.kwargs["cwd"], str(self.root / "project"))
         self.assertEqual((code, err.getvalue()), (0, f"ladder: using {project.path}\n"))

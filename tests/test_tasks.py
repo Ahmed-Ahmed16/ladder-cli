@@ -4,7 +4,7 @@ from pathlib import Path
 import shlex
 import unittest
 
-from ladder.cli import main
+from ladder.cli import Context, main
 from ladder.config import Config, Task
 from ladder.process import LadderError
 from tests.test_cli import DOCTOR, FakeRunner
@@ -40,7 +40,7 @@ class TaskCliTests(unittest.TestCase):
                 raise error
             return config if found else None
 
-        code = main(argv, runner, out, err, load_config=load)
+        code = main(argv, Context(runner, out, err, load_config=load))
         self.assertEqual(starts, [os.getcwd()])
         return code, out.getvalue(), err.getvalue(), runner.steps, config
 
@@ -134,17 +134,15 @@ class TaskCliTests(unittest.TestCase):
                     ["bash", "-c", "first"], ["bash", "-c", "second"]]
                 self.assertEqual(steps, [(command, folder) for command in commands])
 
-    def test_multiple_steps_with_confirm_refuse_without_yes(self):
+    def test_multiple_steps_with_confirm_refuse_invalid_args(self):
         task = Task("ship", "Ship changes", ("first", "second"), confirm=True)
-        code, out, err, steps, _ = self.invoke(["ship"], [task])
-        self.assertEqual((code, out, steps), (1, "", []))
-        self.assertEqual(err, 'ladder: task "ship" needs --yes\n')
-
-    def test_multiple_steps_refuse_yes_with_another_arg(self):
-        task = Task("ship", "Ship changes", ("first", "second"), confirm=True)
-        code, out, err, steps, _ = self.invoke(["ship", "--yes", "extra"], [task])
-        self.assertEqual((code, out, steps), (1, "", []))
-        self.assertEqual(err, 'ladder: task "ship" accepts extra args only with 1 run line\n')
+        for args, message in (([], 'ladder: task "ship" needs --yes\n'),
+                              (["--yes", "extra"],
+                               'ladder: task "ship" accepts extra args only with 1 run line\n')):
+            with self.subTest(args=args):
+                code, out, err, steps, _ = self.invoke(["ship", *args], [task])
+                self.assertEqual((code, out, steps), (1, "", []))
+                self.assertEqual(err, message)
 
     def test_bad_command_is_a_plain_error(self):
         for line in ('python "unclosed', "''", "   "):
@@ -158,8 +156,8 @@ class TaskCliTests(unittest.TestCase):
         combined = io.StringIO()
         project = Config("project/ladder.toml", {
             "check": Task("check", "Check", ("first", "second"))}, {}, {})
-        code = main(["check"], TaskRunner(combined, (0, 0)), combined, combined,
-                    lambda _: project)
+        code = main(["check"], Context(TaskRunner(combined, (0, 0)), combined, combined,
+                                     load_config=lambda _: project))
         self.assertEqual(code, 0)
         self.assertEqual(combined.getvalue().splitlines(),
                          ["ladder: using project/ladder.toml", "$ first", "$ second"])
@@ -180,11 +178,10 @@ class TaskCliTests(unittest.TestCase):
                 self.assertIn(f"ok   ladder.toml: {label}\n", out)
                 self.assertTrue(out.endswith("doctor: all checks passed\n"))
 
-    def test_doctor_reports_config_errors_including_parser_stub(self):
-        for error in (LadderError("file: broken"), NotImplementedError("Ahmed types this")):
-            with self.subTest(error=error):
-                code, out, err, _, _ = self.invoke(["doctor"], error=error)
-                self.assertEqual((code, err), (1, ""))
-                self.assertIn(f"FAIL ladder.toml: {error}\n", out)
-                self.assertIn("ok   Python", out)
-                self.assertTrue(out.endswith("doctor: 1 check(s) failed\n"))
+    def test_doctor_reports_config_errors(self):
+        error = LadderError("file: broken")
+        code, out, err, _, _ = self.invoke(["doctor"], error=error)
+        self.assertEqual((code, err), (1, ""))
+        self.assertIn(f"FAIL ladder.toml: {error}\n", out)
+        self.assertIn("ok   Python", out)
+        self.assertTrue(out.endswith("doctor: 1 check(s) failed\n"))

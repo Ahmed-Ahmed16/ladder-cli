@@ -2,7 +2,7 @@ import io
 import json
 import unittest
 
-from ladder.cli import main
+from ladder.cli import Context, main
 from ladder.config import parse
 from ladder.process import LadderError
 from tests.test_cli import FakeRunner
@@ -39,8 +39,9 @@ class WaitReviewTests(unittest.TestCase):
         runner = FakeRunner(out, answers)
         timer = FakeTime()
         project = None if config is None else parse(config, "ladder.toml")
-        code = main(["pr", "wait-review", "82", *flags], runner, out, err,
-                    lambda _: project, clock=timer.clock, sleep=timer.sleep)
+        code = main(["pr", "wait-review", "82", *flags],
+                    Context(runner, out, err, load_config=lambda _: project,
+                            clock=timer.clock, sleep=timer.sleep))
         lines = [line for line in out.getvalue().splitlines() if not line.startswith("$ ")]
         return code, lines, err.getvalue(), runner.commands, timer.sleeps
 

@@ -38,36 +38,34 @@ confirm = true
             parse(text, "ladder.toml")
         self.assertEqual(str(raised.exception), "ladder.toml: " + message)
 
-    def test_bad_toml_names_file_and_reason(self):
-        self.assert_bad("=", "not valid TOML: Invalid statement (at line 1, column 1)")
-
-    def test_unknown_section_is_named(self):
-        self.assert_bad("[other]", 'unknown section "other"')
-
-    def test_tasks_must_be_a_table(self):
-        self.assert_bad("tasks = []", 'task "tasks": must be a table of tables')
-
-    def test_each_task_must_be_a_table(self):
-        self.assert_bad('[tasks]\ntest = "echo hi"', 'task "test": must be a table')
-
-    def test_about_is_required(self):
-        self.assert_bad('[tasks.test]\nrun = "echo hi"',
-                        'task "test": about must be a non empty string')
+    def test_invalid_file_structure_and_keys_report_exact_errors(self):
+        cases = [
+            ("=", "not valid TOML: Invalid statement (at line 1, column 1)"),
+            ("[other]", 'unknown section "other"'),
+            ("tasks = []", 'task "tasks": must be a table of tables'),
+            ('[tasks]\ntest = "echo hi"', 'task "test": must be a table'),
+            ('[tasks.test]\nabout = "Run tests"\nrun = "echo hi"\nextra = true',
+             'task "test": unknown key "extra"'),
+            ('[review]\nwait_for = []\nbot = "person"', 'review: unknown key "bot"'),
+            ('gates = []', 'gates: must be a table'),
+        ]
+        for text, message in cases:
+            with self.subTest(text=text):
+                self.assert_bad(text, message)
 
     def test_about_must_be_non_empty_text(self):
-        for about in ('""', '"   "', "42"):
+        for about in (None, '""', '"   "', "42"):
             with self.subTest(about=about):
-                self.assert_bad('[tasks.test]\nabout = ' + about + '\nrun = "echo hi"',
+                text = ('[tasks.test]\nrun = "echo hi"' if about is None else
+                        '[tasks.test]\nabout = ' + about + '\nrun = "echo hi"')
+                self.assert_bad(text,
                                 'task "test": about must be a non empty string')
 
-    def test_run_is_required(self):
-        self.assert_bad('[tasks.test]\nabout = "Run tests"',
-                        'task "test": run must be a non empty string or list of non empty strings')
-
     def test_run_must_be_non_empty_text_or_list(self):
-        for run in ('""', '"   "', "[]", "42", '["echo hi", ""]', '["   "]', '[42]'):
+        for run in (None, '""', '"   "', "[]", "42", '["echo hi", ""]', '["   "]', '[42]'):
             with self.subTest(run=run):
-                self.assert_bad('[tasks.test]\nabout = "Run tests"\nrun = ' + run,
+                text = '[tasks.test]\nabout = "Run tests"' + ('\nrun = ' + run if run is not None else '')
+                self.assert_bad(text,
                                 'task "test": run must be a non empty string or list of non empty strings')
 
     def test_shell_allows_only_bash(self):
@@ -81,10 +79,6 @@ confirm = true
             with self.subTest(confirm=confirm):
                 self.assert_bad('[tasks.test]\nabout = "Run tests"\nrun = "echo hi"\nconfirm = ' + confirm,
                                 'task "test": confirm must be a bool')
-
-    def test_unknown_task_key_is_named(self):
-        self.assert_bad('[tasks.test]\nabout = "Run tests"\nrun = "echo hi"\nextra = true',
-                        'task "test": unknown key "extra"')
 
     def test_core_job_names_cannot_be_tasks(self):
         for name in ("help", "list", "doctor", "pr", "gates", "init", "install-skill"):
@@ -111,10 +105,6 @@ confirm = true
             with self.subTest(setting=setting):
                 self.assert_bad('review = ' + setting, 'review: must be a table')
 
-    def test_review_rejects_unknown_keys(self):
-        self.assert_bad('[review]\nwait_for = []\nbot = "person"',
-                        'review: unknown key "bot"')
-
     def test_review_wait_for_must_be_a_list_of_non_empty_strings(self):
         # Cases: scalar, wrong member type, empty member, whitespace member, nested list.
         for setting in ('"reviewer"', '42', 'true', '{}', '[42]', '[false]',
@@ -131,9 +121,6 @@ confirm = true
                                "ladder.toml")
                 self.assertEqual(config.gates,
                                  {"about": "", "ci": ".github/check.yml", "run": expected})
-
-    def test_gates_must_be_a_table(self):
-        self.assert_bad('gates = []', 'gates: must be a table')
 
     def test_gates_need_non_empty_run(self):
         # Cases: absent, empty, whitespace, wrong type, empty list, invalid list member.

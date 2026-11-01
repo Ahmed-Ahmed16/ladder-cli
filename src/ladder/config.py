@@ -22,7 +22,15 @@ class Config:
     review: dict
 
 
-CORE_JOBS = ("help", "list", "doctor", "pr", "gates", "init", "install-skill")
+CORE_JOBS = {
+    "help": "show available commands",
+    "list": "show core jobs and project tasks",
+    "doctor": "check tools, sign in, Python, and ladder.toml",
+    "pr": "read PR review threads or wait for reviews",
+    "gates": "run project checks",
+    "init": "create a project file",
+    "install-skill": "install agent guidance",
+}
 
 
 def repo_root(start) -> Path | None:
