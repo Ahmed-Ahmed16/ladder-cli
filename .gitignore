@@ -1,0 +1,10 @@
+/build/
+/dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+/.venv/
+/.qa/
+/.scratch/werdy-ref/
+!/docs/
+!/docs/**

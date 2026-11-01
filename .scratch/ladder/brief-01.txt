@@ -1,0 +1,43 @@
+<goal>
+Build ticket 01 of a new Python CLI named `ladder`, in this repo (D:\Ahmed-yzh\ladder-cli, empty git repo on branch main, no commits). Test first: write each failing test, then the code that makes it pass.
+</goal>
+
+<read_first>
+- docs/decisions.md (all decisions; follow them)
+- docs/spec.md (Implementation Decisions and Testing Decisions sections are binding)
+- GLOSSARY.md
+- .scratch/ladder/issues/01-tracer-bullet.md (the acceptance criteria for this ticket)
+- .scratch/werdy-ref/pr.rs and .scratch/werdy-ref/process.rs (the Rust original to port; MIT OR Apache-2.0, owner's own code, copying is fine)
+</read_first>
+
+<build>
+1. Package layout with pyproject.toml (setuptools, src layout, package `ladder`, console script `ladder = ladder.cli:run`), requires-python >= 3.12, ZERO third party dependencies. A module `__main__` so `python -m ladder` also works.
+2. Runner seam: one class with `capture(argv) -> str` (raises the ladder error with a plain message on non zero exit, including the program's stderr tail but never anything that looks like a token) and `stream(argv) -> int`. It prints `$ <command>` to the output stream before running. A missing program gives a plain error naming it. Use subprocess with an argv list, never shell=True. On Windows, resolve the program with shutil.which so `gh` and `git` work from PowerShell and Git Bash.
+3. CLI entry `main(argv, runner, out, err) -> int`, plus `run()` that builds the real runner and calls sys.exit(main(...)). Parse with argparse. Jobs in this ticket: `help` (and `-h/--help`), `doctor`, `pr comments <n> [--all] [--full]`. Unknown job: one plain line on err, exit 1. Any LadderError: one line `ladder: <message>` on err, exit 1. Any other exception: one line, exit 1, no traceback unless env LADDER_DEBUG=1.
+4. `doctor`: checks `git --version`, `gh --version`, `gh auth status` (use exit code only; never print its stdout or stderr), and the running Python version (>= 3.12). One line per check like `ok   git 2.x` / `FAIL gh: not found`. Last line `doctor: all checks passed` or `doctor: N check(s) failed`. Exit 0 only when all pass. The runner needs a way to run a command and get its exit code without raising; add it to the seam (for example `check(argv) -> (code, stdout)`), and keep the gh auth output out of every printed line.
+5. `pr comments`: port pr.rs exactly: same GraphQL query string, `gh api graphql -F owner={owner} -F name={repo} -F number=<n> -f query=<query>`, parse_threads, render_threads (unresolved first, sorted by (resolved, path, line) with line None sorting before numbers, `[resolved]` `[outdated]` marks, header `PR #<n>: <open> unresolved of <total> threads`), summary (drop HTML tags, HTML comments, whole nested <details> blocks, remove `**`, first 3 non empty trimmed lines). Wrong PR number error must contain "PR number".
+6. README.md: what ladder is (2 sentences), install (`pip install git+https://github.com/Ahmed-Ahmed16/ladder-cli` and `pip install -e .` for local), the 3 commands, how to run tests.
+7. .gitignore for Python (build, dist, *.egg-info, __pycache__, .venv). Also ignore nothing under docs.
+</build>
+
+<tests>
+- Python stdlib unittest only, under tests/. Run: `python -m unittest discover -s tests -t .` from the repo root. It must also pass with plain `python -m unittest discover`.
+- One seam: tests call `main(argv, fake_runner, out, err)` with a FakeRunner that returns saved answers keyed by command and records the commands it got. Assert only printed text and exit codes. Pure function tests are allowed only for summary() edge cases.
+- Port all pr.rs tests that cover comments (threads parse, wrong PR number, render hides resolved unless --all and orders unresolved first, summary drops markup and details) using the SAME JSON fixtures, through main() where possible. Add: --full keeps the whole body; the `$ gh api graphql ...` line is printed first.
+- doctor tests: all pass -> exit 0; gh missing -> FAIL line and exit 1; gh auth fails -> FAIL and exit 1 AND a test that a fake token string in gh auth output never appears in out or err.
+- Error tests: unknown job -> exit 1, one line; unexpected exception -> no "Traceback" in err.
+- Every check needs a known positive and a known negative case.
+- Test data is made up only. Do not put any real company name, path, URL or token in the repo.
+</tests>
+
+<rules>
+- The steps above are already approved. Proceed through all of them without asking. Stop only if correct completion needs new scope.
+- Do NOT commit, do NOT push, do NOT run pip install outside the repo, do NOT touch files outside this repo.
+- Do not edit docs/decisions.md, docs/spec.md, GLOSSARY.md or anything under .scratch/.
+- Keep it small and plain: target under 600 changed lines including tests.
+- Comments only where the reason is not obvious.
+</rules>
+
+<report>
+End with: files created, the exact test command and its last 5 lines of output, anything you could not do, and any design choice you made that the brief did not specify.
+</report>

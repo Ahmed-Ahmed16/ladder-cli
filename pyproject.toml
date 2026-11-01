@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ladder"
+version = "0.1.0"
+description = "Common project jobs through 1 command"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+ladder = "ladder.cli:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
