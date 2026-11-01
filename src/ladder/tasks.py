@@ -1,7 +1,7 @@
 from pathlib import Path
 import shlex
 
-from .process import LadderError, split_command
+from .process import LadderError, plain, split_command
 
 
 def command(task, line, extra):
@@ -21,6 +21,7 @@ def run_task(config, argv, runner, err):
         extra = [arg for arg in extra if arg != "--yes"]
         if extra:
             raise LadderError(f'task "{name}" accepts extra args only with 1 run line')
+    print(f"ladder: using {plain(config.path)}", file=err, flush=True)
     for step, line in enumerate(task.run, 1):
         code = runner.stream(command(task, line, extra), cwd=str(Path(config.path).parent))
         if code:

@@ -1,0 +1,51 @@
+---
+name: ladder
+description: Use ladder when about to write a script for a repeated job, run checks before a commit, read PR review comments, wait for a reviewer, or run a project's tests, build or deploy steps.
+---
+
+# Use ladder first
+
+Before writing any throwaway script, run `ladder list` in the repo.
+If a job exists, use it.
+If the job will come back, add it as a task in ladder.toml instead of a script.
+Read `ladder help` and `ladder <job> --help` for arguments.
+
+| Job | Use |
+| --- | --- |
+| `help` | Show commands and help. |
+| `list` | Show core jobs and project tasks. |
+| `doctor` | Check tools, sign in, Python and config. |
+| `pr comments <n> [--all] [--full]` | Read unresolved review threads; include resolved threads or whole bodies. |
+| `pr wait-review <n> [--bot login] [--timeout-mins N]` | Coming soon: wait for reviews of the newest commit. |
+| `gates [--dry-run]` | Run checks; dry run only prints the steps. |
+| `init` | Create a starter ladder.toml at the git repo root. |
+| `install-skill` | Install this page for Claude and Codex. |
+| `<task> [args]` | Run a project task. Extra args need 1 command. |
+
+Put `ladder` before each job: `ladder gates`.
+Ladder reads only the nearest git repo root's ladder.toml.
+It reads no config outside a git repo. Subfolder configs are ignored.
+Tasks and gates print `ladder: using <path>` to standard error before steps.
+
+`$ ...` lines show the outside commands ladder ran.
+Gates print PASS for each passing step and FAIL for a failed step.
+Doctor prints ok or FAIL for each check, then the overall result.
+Exit 0 means success. A failed task or gate returns the step's exit code.
+Input errors and doctor failures exit 1. Failure stops later steps.
+`needs --yes` means ask the human first. Never add `--yes` on your own.
+
+Minimal ladder.toml:
+
+```toml
+[tasks.test]
+about = "Run the tests"
+run = "python -m unittest discover -s tests -t ."
+
+[gates]
+run = ["python -m unittest discover -s tests -t ."]
+```
+
+Run `ladder test` for the task, or `ladder gates` for the checks.
+Steps run from the repo root. No shell is used by default.
+Use `shell = "bash"` on a task only when it needs shell features.
+Use `confirm = true` for a task that needs human approval.

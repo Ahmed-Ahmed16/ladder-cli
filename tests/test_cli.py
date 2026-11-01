@@ -81,12 +81,12 @@ class CliTests(unittest.TestCase):
                 code = main(argv, FakeRunner(out, {COMMAND: THREADS}), out, err, broken_config)
                 self.assertEqual((code, err.getvalue()), (0, ""))
 
-    def test_future_core_jobs_are_reserved(self):
+    def test_setup_commands_have_help_without_config_or_writes(self):
         for name in ("init", "install-skill"):
             with self.subTest(name=name):
-                code, out, err = self.invoke([name])
-                self.assertEqual((code, out), (1, ""))
-                self.assertEqual(err, f'ladder: core job "{name}" is not implemented yet\n')
+                code, out, err = self.invoke([name, "--help"])
+                self.assertEqual((code, err), (0, ""))
+                self.assertIn(name, out)
 
     def test_invalid_arguments_give_one_plain_error(self):
         for argv in (["nope"], ["pr"], ["pr", "comments", "bad"],

@@ -9,6 +9,7 @@ from .pr import comments
 from . import config
 from .tasks import run_task
 from .gates import run_gates, warn_ci
+from .setup import init, install_skill
 
 
 CORE_ABOUT = {
@@ -17,8 +18,8 @@ CORE_ABOUT = {
     "doctor": "check tools, sign in, Python, and ladder.toml",
     "pr": "read PR review threads",
     "gates": "run project checks",
-    "init": "create a project file (not implemented yet)",
-    "install-skill": "install agent guidance (not implemented yet)",
+    "init": "create a project file",
+    "install-skill": "install agent guidance",
 }
 
 
@@ -106,7 +107,7 @@ def doctor(runner, out, load_config):
     return int(failed != 0)
 
 
-def main(argv, runner, out, err, load_config=config.load) -> int:
+def main(argv, runner, out, err, load_config=config.load, *, home=None) -> int:
     try:
         if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
             return run_task(load_config(os.getcwd()), argv, runner, err)
@@ -125,10 +126,13 @@ def main(argv, runner, out, err, load_config=config.load) -> int:
             project = load_config(os.getcwd())
             if project is None or not project.gates:
                 raise LadderError("no [gates] in ladder.toml")
+            print(f"ladder: using {plain(project.path)}", file=err, flush=True)
             warn_ci(project, err)
             return run_gates(args, project, runner, out)
-        else:
-            raise LadderError(f'core job "{args.job}" is not implemented yet')
+        elif args.job == "init":
+            init(os.getcwd(), out)
+        elif args.job == "install-skill":
+            install_skill(out, home)
         return 0
     except SystemExit as error:
         return error.code

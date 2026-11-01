@@ -23,6 +23,10 @@ class TaskRunner(FakeRunner):
 
 
 class TaskCliTests(unittest.TestCase):
+    @property
+    def using(self):
+        return f"ladder: using {Path(os.getcwd()) / 'project' / 'ladder.toml'}\n"
+
     def invoke(self, argv, tasks=(), codes=(0,), error=None, found=True):
         out, err = io.StringIO(), io.StringIO()
         runner = TaskRunner(out, codes)
@@ -72,7 +76,7 @@ class TaskCliTests(unittest.TestCase):
     def test_no_shell_splits_quotes_and_passes_args_from_config_folder(self):
         task = Task("test", "Run tests", ('python "tools/check file.py"',))
         code, out, err, steps, config = self.invoke(["test", "a b", "--flag"], [task])
-        self.assertEqual((code, err), (0, ""))
+        self.assertEqual((code, err), (0, self.using))
         self.assertEqual(steps, [(["python", "tools/check file.py", "a b", "--flag"],
                                  str(Path(config.path).parent))])
         self.assertTrue(out.startswith("$ python "))
@@ -80,13 +84,13 @@ class TaskCliTests(unittest.TestCase):
     def test_task_name_starting_with_dash_is_still_a_task(self):
         task = Task("-check", "Run checks", ("check",))
         code, _, err, steps, _ = self.invoke(["-check"], [task])
-        self.assertEqual((code, err), (0, ""))
+        self.assertEqual((code, err), (0, self.using))
         self.assertEqual([argv for argv, _ in steps], [["check"]])
 
     def test_bash_quotes_extra_args_as_literal_words(self):
         task = Task("test", "Run tests", ("echo ready | cat",), shell="bash")
         code, _, err, steps, config = self.invoke(["test", "a b", "$(bad)", "'"], [task])
-        self.assertEqual((code, err), (0, ""))
+        self.assertEqual((code, err), (0, self.using))
         self.assertEqual(steps, [(["bash", "-c", "echo ready | cat " + shlex.join(["a b", "$(bad)", "'"])],
                                  str(Path(config.path).parent))])
 
@@ -98,7 +102,7 @@ class TaskCliTests(unittest.TestCase):
                 ((0, 9), ["first", "second"], 9, "ladder: step 2 of 3 failed (exit 9)\n")):
             with self.subTest(codes=codes):
                 code, _, err, steps, _ = self.invoke(["test"], [task], codes)
-                self.assertEqual((code, err), (expected_code, message))
+                self.assertEqual((code, err), (expected_code, self.using + message))
                 self.assertEqual([argv[0] for argv, _ in steps], expected_names)
 
     def test_extra_args_are_refused_for_multiple_steps(self):
@@ -113,7 +117,7 @@ class TaskCliTests(unittest.TestCase):
             with self.subTest(args=args):
                 code, _, err, steps, config = self.invoke(["ship", *args], [task])
                 if "--yes" in args:
-                    self.assertEqual((code, err), (0, ""))
+                    self.assertEqual((code, err), (0, self.using))
                     self.assertEqual(steps, [(["ship", *args], str(Path(config.path).parent))])
                 else:
                     self.assertEqual((code, err, steps), (1, 'ladder: task "ship" needs --yes\n', []))
@@ -124,7 +128,7 @@ class TaskCliTests(unittest.TestCase):
                 task = Task("ship", "Ship changes", ("first", "second"),
                             shell=shell, confirm=True)
                 code, _, err, steps, config = self.invoke(["ship", "--yes"], [task], (0, 0))
-                self.assertEqual((code, err), (0, ""))
+                self.assertEqual((code, err), (0, self.using))
                 folder = str(Path(config.path).parent)
                 commands = [["first"], ["second"]] if shell is None else [
                     ["bash", "-c", "first"], ["bash", "-c", "second"]]
@@ -147,8 +151,18 @@ class TaskCliTests(unittest.TestCase):
             with self.subTest(line=line):
                 code, _, err, steps, _ = self.invoke(["test"], [Task("test", "Run tests", (line,))])
                 self.assertEqual((code, steps), (1, []))
-                self.assertTrue(err.startswith('ladder: task "test": '))
-                self.assertEqual(len(err.splitlines()), 1)
+                self.assertTrue(err.startswith(self.using + 'ladder: task "test": '))
+                self.assertEqual(len(err.splitlines()), 2)
+
+    def test_config_path_printed_once_before_first_step(self):
+        combined = io.StringIO()
+        project = Config("project/ladder.toml", {
+            "check": Task("check", "Check", ("first", "second"))}, {}, {})
+        code = main(["check"], TaskRunner(combined, (0, 0)), combined, combined,
+                    lambda _: project)
+        self.assertEqual(code, 0)
+        self.assertEqual(combined.getvalue().splitlines(),
+                         ["ladder: using project/ladder.toml", "$ first", "$ second"])
 
     def test_config_error_is_a_plain_error(self):
         for argv in (["list"], ["test"]):

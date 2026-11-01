@@ -25,15 +25,20 @@ class Config:
 CORE_JOBS = ("help", "list", "doctor", "pr", "gates", "init", "install-skill")
 
 
-def find(start: str) -> str | None:
+def repo_root(start) -> Path | None:
     folder = Path(start).resolve()
-    while True:
-        path = folder / "ladder.toml"
-        if path.is_file():
-            return str(path)
-        if (folder / ".git").exists() or folder.parent == folder:
-            return None
-        folder = folder.parent
+    for candidate in (folder, *folder.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def find(start: str) -> str | None:
+    root = repo_root(start)
+    if root is None:
+        return None
+    path = root / "ladder.toml"
+    return str(path) if path.is_file() else None
 
 
 def load(start) -> Config | None:

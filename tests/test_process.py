@@ -244,5 +244,5 @@ class BashRunnerTests(unittest.TestCase):
             code = main(["check"], Runner(out), out, err, lambda _: project)
             self.assertEqual(popen.call_args.args[0], [str(bash), "-c", "echo hi | cat"])
             self.assertEqual(popen.call_args.kwargs["cwd"], str(self.root / "project"))
-        self.assertEqual((code, err.getvalue()), (0, ""))
+        self.assertEqual((code, err.getvalue()), (0, f"ladder: using {project.path}\n"))
         self.assertTrue(out.getvalue().endswith("checked\n"))

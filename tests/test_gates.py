@@ -14,6 +14,10 @@ from tests.test_tasks import TaskRunner
 
 
 class GatesCliTests(unittest.TestCase):
+    @property
+    def using(self):
+        return f"ladder: using {self.root / 'ladder.toml'}\n"
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -42,7 +46,7 @@ class GatesCliTests(unittest.TestCase):
     def test_steps_run_without_shell_from_config_folder_with_pass_lines(self):
         code, out, err, steps = self.invoke(
             '[gates]\nrun = [\'check "file name"\', "test | literal"]', codes=(0, 0))
-        self.assertEqual((code, err), (0, ""))
+        self.assertEqual((code, err), (0, self.using))
         self.assertEqual(steps, [(["check", "file name"], str(self.root)),
                                  (["test", "|", "literal"], str(self.root))])
         self.assertEqual(out, '$ check \'file name\'\nPASS step 1 of 2: check "file name"\n'
@@ -56,7 +60,7 @@ class GatesCliTests(unittest.TestCase):
             with self.subTest(codes=codes):
                 code, out, err, steps = self.invoke(
                     '[gates]\nrun = ["first", "second", "third"]', codes=codes)
-                self.assertEqual((code, err), (expected, ""))
+                self.assertEqual((code, err), (expected, self.using))
                 self.assertEqual([argv[0] for argv, _ in steps], lines)
                 expected_output = ""
                 for number, (line, status) in enumerate(zip(lines, codes), 1):
@@ -68,7 +72,7 @@ class GatesCliTests(unittest.TestCase):
     def test_dry_run_numbers_original_lines_without_starting_anything(self):
         self.assertEqual(self.invoke('[gates]\nrun = [\'check "file name"\', "test"]',
                                      args=("--dry-run",), codes=()),
-                         (0, '1: check "file name"\n2: test\n', "", []))
+                         (0, '1: check "file name"\n2: test\n', self.using, []))
 
     def test_gates_reject_extra_args_and_abbreviated_flags(self):
         for args in (("extra",), ("--yes",), ("--dry",), ("--dry-run", "extra")):
@@ -95,8 +99,8 @@ class GatesCliTests(unittest.TestCase):
                 with self.subTest(matched=matched, args=args):
                     code, out, err, steps = self.invoke(text, args=args)
                     self.assertEqual(code, 0)
-                    self.assertEqual(err, "" if matched else
-                                     "warning: gate step 1 not found in .github/ci.yml: python -m unittest\n")
+                    self.assertEqual(err, self.using + ("" if matched else
+                                     "warning: gate step 1 not found in .github/ci.yml: python -m unittest\n"))
                     self.assertEqual(len(steps), 0 if args else 1)
                     self.assertIn("1: python -m unittest" if args else "gates: all 1 passed", out)
 
@@ -104,7 +108,7 @@ class GatesCliTests(unittest.TestCase):
         (self.root / "ci.yml").write_text("run: check file name", encoding="utf-8")
         code, out, err, steps = self.invoke(
             '[gates]\nci = "ci.yml"\nrun = "check  file\\tname"')
-        self.assertEqual((code, err), (0, ""))
+        self.assertEqual((code, err), (0, self.using))
         self.assertEqual(steps, [(["check", "file", "name"], str(self.root))])
         self.assertIn("PASS step 1 of 1: check  file\tname\n", out)
 
@@ -116,9 +120,10 @@ class GatesCliTests(unittest.TestCase):
         runner = TaskRunner(combined, (0, 0, 0))
         code = main(["gates"], runner, combined, combined, lambda _: load(self.root))
         self.assertEqual(code, 0)
-        self.assertEqual(combined.getvalue().splitlines()[:3],
-                         ["warning: gate step 1 not found in ci.yml: first",
+        self.assertEqual(combined.getvalue().splitlines()[:4],
+                         [self.using.strip(), "warning: gate step 1 not found in ci.yml: first",
                           "warning: gate step 3 not found in ci.yml: third", "$ first"])
+        self.assertEqual(combined.getvalue().count(self.using), 1)
 
     def test_unreadable_ci_warns_and_preserves_step_exit_code(self):
         # Cases: missing file, invalid UTF8, directory instead of a file.
@@ -135,16 +140,16 @@ class GatesCliTests(unittest.TestCase):
                 self.assertEqual(code, 6)
                 self.assertEqual(len(steps), 1)
                 self.assertIn("FAIL step 1 of 1: check (exit 6)", out)
-                self.assertTrue(err.startswith("warning: could not read ci.yml:"))
-                self.assertEqual(len(err.splitlines()), 1)
+                self.assertTrue(err.startswith(self.using + "warning: could not read ci.yml:"))
+                self.assertEqual(len(err.splitlines()), 2)
 
     def test_malformed_command_has_a_plain_error(self):
         for line in ('check "unclosed', "''"):
             with self.subTest(line=line):
                 code, _, err, steps = self.invoke('[gates]\nrun = ' + json.dumps(line))
                 self.assertEqual((code, steps), (1, []))
-                self.assertTrue(err.startswith("ladder: gate step 1: "))
-                self.assertEqual(len(err.splitlines()), 1)
+                self.assertTrue(err.startswith(self.using + "ladder: gate step 1: "))
+                self.assertEqual(len(err.splitlines()), 2)
 
     def test_real_runner_streams_child_output_and_stops_on_failure(self):
         script = self.root / "check.py"
@@ -158,7 +163,7 @@ class GatesCliTests(unittest.TestCase):
                     '[gates]\nrun = ' + json.dumps([line, line]), encoding="utf-8")
                 out, err = io.StringIO(), io.StringIO()
                 code = main(["gates"], Runner(out), out, err, lambda _: load(self.root))
-                self.assertEqual((code, err.getvalue()), (status, ""))
+                self.assertEqual((code, err.getvalue()), (status, self.using))
                 child_output = self.root.name + f"\n['{status}', '|', 'literal']\n"
                 self.assertEqual(out.getvalue().count(child_output), 1 if status else 2)
                 self.assertIn(child_output + (f"FAIL step 1 of 2: {line} (exit 7)" if status
@@ -169,5 +174,5 @@ class GatesCliTests(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         code = main(["gates"], Runner(out), out, err, lambda _: load(self.root))
         self.assertEqual(code, 1)
-        self.assertEqual(err.getvalue(), "ladder: ./missing-program: not found\n")
+        self.assertEqual(err.getvalue(), self.using + "ladder: ./missing-program: not found\n")
         self.assertTrue(out.getvalue().endswith("FAIL step 1 of 1: ./missing-program (exit 1)\n"))

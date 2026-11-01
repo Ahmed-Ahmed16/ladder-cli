@@ -15,3 +15,6 @@ ladder = "ladder.cli:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+ladder = ["skill/SKILL.md"]

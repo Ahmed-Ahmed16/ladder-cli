@@ -1,0 +1,45 @@
+<goal>
+In this repo (`ladder`, Python 3.12, stdlib only): fix 1 security finding, then build ticket 04 (`ladder install-skill` and `ladder init`). Test first throughout.
+</goal>
+
+<read_first>
+docs/decisions.md (D17), docs/spec.md, GLOSSARY.md, .scratch/ladder/issues/04-install-skill-and-init.md, README.md, and all of src/ladder and tests/.
+</read_first>
+
+<fix_config_discovery>
+Security finding: config.find() walks up parent folders to the drive root when the start folder is not in a git repo, so a planted ladder.toml higher up (for example D:\ladder.toml) defines tasks.
+Fix: find the git repo root first (the nearest folder at or above start that holds `.git`, file or folder). If there is none, return None: ladder reads no ladder.toml outside a git repo. Otherwise return <root>/ladder.toml if it exists, else None. A ladder.toml in a subfolder of the repo is not used. Update find's tests: inside repo at root found; from a subfolder found at root; outside any repo with a ladder.toml in a parent -> None; repo without file -> None.
+Also: when a task or gates runs, print "ladder: using <path>" to err once before the first step, so the file in use is always visible.
+</fix_config_discovery>
+
+<ticket_04_install_skill>
+1. Ship the skill page inside the package as package data: src/ladder/skill/SKILL.md (configure pyproject so it is included in a normal pip install, and read it with importlib.resources).
+2. SKILL.md content, written for agents, short and plain English, no em dashes or en dashes:
+   - frontmatter: `name: ladder`, and a `description` that triggers when an agent is about to write a script for a repeated job, run checks before a commit, read PR review comments, wait for a reviewer, or run a project's tests, build or deploy steps.
+   - The rule: before writing any throwaway script, run `ladder list` in the repo. If a job exists, use it. If the job will come back, add it as a task in ladder.toml instead of a script.
+   - The core job table: help, list, doctor, pr comments <n> [--all] [--full], pr wait-review <n> [--bot login] [--timeout-mins N] (mark it as coming soon until it exists), gates [--dry-run], init, install-skill, <task> [args].
+   - What outputs mean: `$ ...` lines are the commands ladder ran; PASS and FAIL lines; doctor's ok and FAIL; exit codes; "needs --yes" means ask the human first, never add --yes on your own.
+   - A minimal ladder.toml example with 1 task and [gates].
+   - Keep it under 80 lines.
+3. `ladder install-skill`:
+   - writes SKILL.md to <home>/.claude/skills/ladder/SKILL.md and <home>/.agents/skills/ladder/SKILL.md (create folders);
+   - updates <home>/.codex/AGENTS.md: a section between the exact lines `<!-- ladder:start -->` and `<!-- ladder:end -->`, holding 5 to 8 lines: the rule and "run `ladder list`, read `ladder help`". If the markers exist, replace only the text between them; if not, append the section with 1 blank line before it; create the file if missing. Text outside the markers is never changed. Write each file through a temp file in the same folder then os.replace. If the file has a start marker without an end marker (or the reverse, or more than 1 of either), refuse with a plain error and change nothing.
+   - prints 1 line per file: "wrote <path>" or "updated <path>" or "unchanged <path>".
+   - home comes from a seam (a parameter defaulting to Path.home()) so tests use a temp folder. Tests never touch the real home.
+4. `ladder init`:
+   - in the git repo root (refuse outside a repo), writes a starter ladder.toml: a commented example task and a [gates] block with run = ["git --version"] and a comment telling the user to replace it with the CI steps. Refuse if ladder.toml exists ("ladder.toml already exists; edit it instead").
+   - the written file must parse with ladder's own parser (test this).
+   - then prints the 2 lines to add to the repo's AGENTS.md: "This repo uses ladder for repeated jobs. Run `ladder list` before writing any script; tasks live in ladder.toml." It does not edit AGENTS.md itself.
+5. Remove "(not implemented yet)" from init and install-skill in list and help. Update README.
+Tests: rerun of install-skill gives "unchanged" and no duplicate section; text outside markers preserved byte for byte; broken markers refused with no change; init refuses existing file; init output parses.
+</ticket_04_install_skill>
+
+<rules>
+- Approved; proceed without asking. Do NOT commit or push. Do NOT run install-skill against the real home folder. Touch only this repo; do not edit docs/ or .scratch/. No scratch folders inside the repo.
+- Under 300 changed lines in src (SKILL.md not counted).
+- Final: `python -m unittest discover -s tests -t .` passes with 0 failures and 0 errors. Also check `pip wheel . -w <system temp dir> --no-deps` builds a wheel that contains ladder/skill/SKILL.md, and report that check.
+</rules>
+
+<report>
+Files changed, test counts, the wheel check result, every choice the brief did not specify.
+</report>
