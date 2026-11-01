@@ -231,3 +231,22 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(code, 1)
                 self.assertIn('[redacted]', err)
                 self.assertNotIn(secret, out + err)
+
+    def test_comments_strip_hidden_controls_and_preserve_visible_unicode(self):
+        # Cases: terminal controls and bidi marks; ordinary accents and Arabic.
+        cases = [('\x1b[31mRed\x9b CSI \u202ebidi \u2066isolate\nNext\tline',
+                  '[31mRed CSI bidi isolate\nNext\tline'),
+                 ('caf\u00e9 na\u00efve\n\u0645\u0631\u062d\u0628\u0627',
+                  'caf\u00e9 na\u00efve\n\u0645\u0631\u062d\u0628\u0627')]
+        for body, expected in cases:
+            for flags in ([], ['--full']):
+                with self.subTest(body=body, flags=flags):
+                    answer = json.loads(THREADS)
+                    thread = answer['data']['repository']['pullRequest']['reviewThreads']['nodes'][1]
+                    thread['comments']['nodes'][0]['body'] = body
+                    code, out, err = self.invoke(['pr', 'comments', '82'] + flags,
+                                                 {COMMAND: json.dumps(answer)})
+                    self.assertEqual((code, err), (0, ''))
+                    self.assertIn('\n'.join('    ' + line for line in expected.splitlines()), out)
+                    for hidden in ('\x1b', '\x9b', '\u202e', '\u2066'):
+                        self.assertNotIn(hidden, out + err)

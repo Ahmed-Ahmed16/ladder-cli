@@ -1,0 +1,31 @@
+<goal>
+Fix 2 security findings in src/ladder/process.py of this repo (Python 3.12 CLI `ladder`, stdlib only). Test first: write each failing test, then the fix.
+</goal>
+
+<finding_1>
+Runner._argv resolves the program with shutil.which(argv[0]). On Windows, Python also searches the current working directory. Verified on this PC: a program present only in the current folder was found by shutil.which even with NoDefaultCurrentDirectoryInExePath=1 set. So a cloned repo could ship gh.exe and ladder would run it on a machine without gh installed.
+Fix: resolve only through the PATH directories. Ignore empty entries, "." and any relative entry, and never search the current directory. Pass an explicit path string to shutil.which built from the absolute PATH entries, and additionally refuse a result whose folder equals the current working directory unless that folder is itself an absolute PATH entry. A missing program still gives the plain error "<name>: not found".
+Tests (through the existing runner, using a temporary folder, os.chdir into it and restoring afterwards, and a patched PATH):
+- a program that exists only in the current folder is NOT found -> LadderError "not found"
+- the same program in an absolute folder on PATH IS found
+- a "." entry on PATH does not make the current folder searchable
+Make the tests work on Windows; on other systems the planted file needs the executable bit.
+</finding_1>
+
+<finding_2>
+redact() strips only C0 controls. C1 controls (\x80-\x9f, including CSI \x9b) and Unicode format characters such as bidi overrides (U+202A to U+202E, U+2066 to U+2069, U+200E, U+200F) pass through, so a hostile PR comment can recolor the terminal or reorder text.
+Fix: drop every character whose unicodedata.category starts with "C", except "\n" and "\t". Keep all existing redaction behaviour.
+Tests: through main() with the FakeRunner, a PR comment body containing \x1b[31m, \x9b, U+202E and U+2066 renders with none of those characters, while the visible text and newlines survive. Plus a negative: ordinary text with accents and Arabic letters is unchanged.
+</finding_2>
+
+<rules>
+- The steps are approved. Proceed without asking. Stop only for new scope.
+- Do NOT commit or push. Do not touch files outside this repo. Do not edit docs/ or .scratch/.
+- Keep the change small: under 80 changed lines in src, tests as needed.
+- Run: python -m unittest discover -s tests -t .  All tests must pass.
+- Do not create scratch folders inside the repo (last run left a locked .qa folder). Use the system temp dir.
+</rules>
+
+<report>
+Files changed, the test command and its last 5 lines, and any choice the brief did not specify.
+</report>

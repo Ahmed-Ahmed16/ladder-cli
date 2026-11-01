@@ -1,7 +1,9 @@
+import os
 import re
 import shlex
 import shutil
 import subprocess
+import unicodedata
 
 
 class LadderError(Exception):
@@ -17,7 +19,8 @@ def redact(message):
                      r"\1[redacted]", message)
     message = re.sub(r'''(?i)(["']?\b(?:token|password|secret|api[_-]?key)["']?\s*[:=]\s*)''' + secret_value,
                      r"\1[redacted]", message)
-    return re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "", message)
+    return "".join(char for char in message
+                   if char in "\n\t" or not unicodedata.category(char).startswith("C"))
 
 
 def plain(message):
@@ -30,7 +33,21 @@ class Runner:
 
     def _argv(self, argv):
         print("$ " + redact(shlex.join(argv)).replace("\n", "\\n"), file=self.out, flush=True)
-        program = shutil.which(argv[0])
+        directories = [directory for directory in os.environ.get("PATH", "").split(os.pathsep)
+                       if os.path.isabs(directory)
+                       and (os.name != "nt" or os.path.splitdrive(directory)[0])]
+        search_path = os.pathsep.join(directories)
+        program = None
+        for directory in directories:
+            # A full candidate path prevents Windows from prepending the current folder.
+            program = shutil.which(os.path.join(directory, argv[0]), path=search_path)
+            if program is not None:
+                break
+        if program is not None:
+            folder = os.path.normcase(os.path.realpath(os.path.dirname(program)))
+            allowed = {os.path.normcase(os.path.realpath(directory)) for directory in directories}
+            if folder == os.path.normcase(os.path.realpath(os.getcwd())) and folder not in allowed:
+                program = None
         if program is None:
             raise LadderError(f"{plain(argv[0])}: not found")
         return [program, *argv[1:]]
