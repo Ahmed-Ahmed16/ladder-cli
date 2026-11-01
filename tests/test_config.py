@@ -81,7 +81,7 @@ confirm = true
                                 'task "test": confirm must be a bool')
 
     def test_core_job_names_cannot_be_tasks(self):
-        for name in ("help", "list", "doctor", "pr", "gates", "init", "install-skill"):
+        for name in ("help", "list", "doctor", "pr", "gates", "add", "init", "install-skill"):
             with self.subTest(name=name):
                 self.assert_bad(f'[tasks.{name}]\nabout = "Run tests"\nrun = "echo hi"',
                                 f'task "{name}" clashes with the core job "{name}", rename it')

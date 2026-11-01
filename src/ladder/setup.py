@@ -10,11 +10,13 @@ from .process import LadderError
 START = b"<!-- ladder:start -->"
 END = b"<!-- ladder:end -->"
 GUIDANCE = (
-    "This machine uses ladder for repeated jobs.",
-    "Before writing any throwaway script, run `ladder list` in the repo.",
-    "If a job exists, use it.",
-    "If the job will come back, add a task in ladder.toml instead of a script.",
-    "Run `ladder list`, read `ladder help`.",
+    "Before writing any script, run `ladder list` in the repo. If a task exists, use it.",
+    "If a task is broken or outdated, fix its script in place. Never write a second script for the same job.",
+    "A script used once may stay in a temp folder. Save a script the job will need again in `scripts/ladder/` in the repo.",
+    'Add it with `ladder add <name> --about "..." --run "..."`. Never hand edit ladder.toml to add a task.',
+    "Run it once with `ladder <name>` to prove it works. Put the script and ladder.toml change in the same commit as the work.",
+    "In company repos, the task reaches Ahmed through the same PR. Never put a path outside the repo in its ladder.toml.",
+    "Personal scripts get tasks in their own folder's ladder.toml. Read `ladder help` for arguments.",
 )
 STARTER = '''# [tasks.test]
 # about = "Run the tests"
@@ -36,7 +38,8 @@ def init(start, out):
     except FileExistsError as error:
         raise LadderError("ladder.toml already exists; edit it instead") from error
     print("This repo uses ladder for repeated jobs.", file=out)
-    print("Run `ladder list` before writing any script; tasks live in ladder.toml.", file=out)
+    print("Run `ladder list` before writing any script; save reusable scripts in "
+          "scripts/ladder/ and use `ladder add` to add tasks.", file=out)
 
 
 def read_existing(path):

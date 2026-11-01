@@ -28,6 +28,7 @@ CORE_JOBS = {
     "doctor": "check tools, sign in, Python, and ladder.toml",
     "pr": "read PR review threads or wait for reviews",
     "gates": "run project checks",
+    "add": "add a project task to ladder.toml",
     "init": "create a project file",
     "install-skill": "install agent guidance",
 }

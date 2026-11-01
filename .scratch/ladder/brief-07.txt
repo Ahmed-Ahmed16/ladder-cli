@@ -1,0 +1,45 @@
+<goal>
+Build ticket 07 of `ladder` (this repo, Python 3.12, stdlib only): a new core job `ladder add`, and a stronger "save scripts, do not throw them away" rule in the agent guidance. Test first.
+</goal>
+
+<read_first>
+docs/decisions.md (all, especially D19 to D22), .scratch/ladder/issues/07-ladder-add-and-save-rule.md, src/ladder (all), src/ladder/skill/SKILL.md, tests/.
+</read_first>
+
+<ladder_add>
+`ladder add NAME --about TEXT --run LINE [--run LINE ...] [--shell bash] [--confirm]`
+- Add "add" to the core jobs table with about text "add a project task to ladder.toml". It becomes a reserved task name like the others.
+- Repo root via the existing repo_root; outside a repo -> "not in a git repo", exit 1.
+- NAME must be a bare TOML key: letters, digits, "-" and "_" only, else a plain error.
+- --about and at least 1 --run are required.
+- Build the new block as text, for example:
+    [tasks.check-lang]
+    about = "Find missing translation keys"
+    run = "python scripts/ladder/check-lang.py"
+  (a list when --run is given more than once; shell and confirm lines only when given). Strings must be valid TOML basic strings: escape backslash, double quote and control characters. Write a small escape function and test it with Windows paths, quotes and a tab.
+- New text = existing file text (kept byte for byte; add 1 newline first if it does not end with one, and 1 blank line before the block) + block. If the file is missing, the new text is just the block.
+- Before writing, parse the NEW text with ladder's own parse(). Any error (duplicate task -> report as 'task "NAME" already exists; edit its script instead', core job clash, anything else) refuses with no change to the file. tomllib already rejects a duplicate table; make the message the one above.
+- Write through the existing atomic write helper. Print 'added task "NAME" to <path>' and on a second line 'run it once: ladder NAME'.
+Tests through main(): adds to an existing file and keeps old bytes; creates a missing file; list form for 2 runs; shell and confirm; duplicate refused unchanged; core name refused; bad name refused; outside repo refused; a run line with a Windows path and quotes round trips through parse exactly.
+</ladder_add>
+
+<guidance>
+Rewrite the rule part of src/ladder/skill/SKILL.md (keep it under 90 lines, plain English, no em or en dashes) to carry D21 exactly:
+- Before writing any script, run `ladder list`. If a task exists, use it.
+- If a task is broken or outdated, fix its script in place. Never write a second script for the same job.
+- A script used once may stay in a temp folder.
+- A script the job will need again: save it in `scripts/ladder/` in the repo, run `ladder add <name> --about "..." --run "..."`, run it once with `ladder <name>` to prove it works, and put the script and the ladder.toml change in the same commit as the work.
+- Never hand edit ladder.toml to add a task; use `ladder add`.
+- Never put a path outside the repo in a repo's ladder.toml.
+Add `add` to the job table. Update the GUIDANCE lines for the ~/.codex/AGENTS.md section to the same rule in 5 to 8 lines. Update `init`'s printed AGENTS.md lines to mention scripts/ladder and ladder add. Update README.
+</guidance>
+
+<rules>
+- Approved; proceed without asking. Do NOT commit or push. Touch only this repo; do not edit docs/ or .scratch/. No scratch folders inside the repo. Do not run install-skill against the real home.
+- Under 200 changed lines in src (SKILL.md not counted).
+- Final: `python -m unittest discover -s tests -t .` passes with 0 failures and 0 errors.
+</rules>
+
+<report>
+Files changed, test counts, every choice the brief did not specify.
+</report>

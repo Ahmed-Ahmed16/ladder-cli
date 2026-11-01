@@ -50,15 +50,16 @@ class TaskCliTests(unittest.TestCase):
         code, out, err, steps, config = self.invoke(["list"], tasks)
         self.assertEqual((code, err, steps), (0, "", []))
         lines = out.splitlines()
-        self.assertEqual([line.split()[0] for line in lines[:7]],
-                         ["help", "list", "doctor", "pr", "gates", "init", "install-skill"])
-        self.assertTrue(all(len(line.split(maxsplit=1)) == 2 for line in lines[:7]))
-        self.assertEqual([len(line) - len(line.lstrip()) for line in lines[:7]], [0] * 7)
-        for line in lines[:7]:
+        self.assertEqual([line.split()[0] for line in lines[:8]],
+                         ["help", "list", "doctor", "pr", "gates", "add", "init", "install-skill"])
+        self.assertTrue(all(len(line.split(maxsplit=1)) == 2 for line in lines[:8]))
+        self.assertEqual([len(line) - len(line.lstrip()) for line in lines[:8]], [0] * 8)
+        for line in lines[:8]:
             name, about = line.split(maxsplit=1)
             self.assertEqual(line.index(about), 15)
         self.assertEqual(lines[4], "gates          run project checks")
-        self.assertEqual(lines[7:], [f"Project tasks (from {config.path}):",
+        self.assertEqual(lines[5], "add            add a project task to ladder.toml")
+        self.assertEqual(lines[8:], [f"Project tasks (from {config.path}):",
                                     "test          Run tests", "ship-release  Ship changes [needs --yes]"])
 
     def test_list_without_file_succeeds(self):

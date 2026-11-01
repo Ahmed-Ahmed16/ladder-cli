@@ -35,6 +35,13 @@ Agreed with Ahmed in a grilling session on 2026-11-01. Each line is a decision, 
 
 18. Print each outside command before running it. Return a plain error, never a crash trace. Never print a secret. Write nothing into a repo unless that is the command's job.
 
+## Saving scripts instead of throwing them away (2026-11-01)
+
+19. **Saved scripts live in `scripts/ladder/` in each repo**, next to its `ladder.toml`. A script used once may stay in a temp folder. A script the job will need again is saved there.
+20. **`ladder add <name> --about ... --run ...` adds a task safely.** It refuses a name that exists or clashes with a core job, checks the whole file still parses, and only then writes. Agents never hand edit `ladder.toml`.
+21. **The skill rule for every agent:** run `ladder list` before writing any script; use a task that exists; fix a broken or outdated task's script in place, never write a second one; save a reusable script in `scripts/ladder/`, add it with `ladder add`, run it once through ladder, and put it in the same commit as the work. In company repos the new task reaches Ahmed through the same PR.
+22. **Personal scripts stay out of company repos.** A script that lives in a personal folder (for example the deploy tools) gets a task in that folder's own `ladder.toml`, never a path in a company repo.
+
 ## Facts checked, not decisions
 
 * The work laptop is the main PC: Windows 11 Pro, Python 3.12.10, `gh` 2.98.0, Codex 0.164.0. Checked 2026-11-01.

@@ -14,6 +14,7 @@ from . import config
 from .tasks import run_task
 from .gates import run_gates, warn_ci
 from .setup import init, install_skill
+from .add import add_task
 from .review import ReviewWait, review_logins
 
 
@@ -57,10 +58,10 @@ def reviewer_login(text):
 
 
 def arguments():
-    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | <task> [args]")
+    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | add | <task> [args]")
     jobs = parser.add_subparsers(dest="job")
     job_parsers = {name: jobs.add_parser(name, help=config.CORE_JOBS[name],
-                                       allow_abbrev=name != "gates")
+                                       allow_abbrev=name not in ("gates", "add"))
                    for name in config.CORE_JOBS}
     pr = job_parsers["pr"]
     commands = pr.add_subparsers(dest="command", required=True)
@@ -76,6 +77,12 @@ def arguments():
                       help="whole number >= 1 (default: 20)")
     gates = job_parsers["gates"]
     gates.add_argument("--dry-run", action="store_true", help="print steps without running them")
+    add = job_parsers["add"]
+    add.add_argument("name", help="letters, digits, - and _ only")
+    add.add_argument("--about", required=True, help="describe the task")
+    add.add_argument("--run", required=True, action="append", help="command to run; may be repeated")
+    add.add_argument("--shell", choices=("bash",), help="use bash for shell features")
+    add.add_argument("--confirm", action="store_true", help="require --yes to run this task")
     return parser
 
 
@@ -171,6 +178,11 @@ def init_job(args, context):
     return 0
 
 
+def add_job(args, context):
+    add_task(os.getcwd(), args, context.out)
+    return 0
+
+
 def install_skill_job(args, context):
     install_skill(context.out, context.home)
     return 0
@@ -182,6 +194,7 @@ JOBS = {
     "doctor": doctor_job,
     "pr": pr_job,
     "gates": gates_job,
+    "add": add_job,
     "init": init_job,
     "install-skill": install_skill_job,
 }

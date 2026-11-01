@@ -5,9 +5,22 @@ description: Use ladder when about to write a script for a repeated job, run che
 
 # Use ladder first
 
-Before writing any throwaway script, run `ladder list` in the repo.
-If a job exists, use it.
-If the job will come back, add it as a task in ladder.toml instead of a script.
+Before writing any script, run `ladder list` in the repo.
+If a task exists, use it.
+If a task is broken or outdated, fix its script in place.
+Never write a second script for the same job.
+A script used once may stay in a temp folder.
+For a script the job will need again:
+
+1. Save it in `scripts/ladder/` in the repo.
+2. Run `ladder add <name> --about "..." --run "..."`.
+3. Run it once with `ladder <name>` to prove it works.
+4. Put the script and the ladder.toml change in the same commit as the work.
+
+In company repos, the task reaches Ahmed through the same PR.
+Never hand edit ladder.toml to add a task; use `ladder add`.
+Never put a path outside the repo in its ladder.toml.
+Personal scripts get tasks in their own folder's ladder.toml.
 Read `ladder help` and `ladder <job> --help` for arguments.
 
 | Job | Use |
@@ -18,6 +31,7 @@ Read `ladder help` and `ladder <job> --help` for arguments.
 | `pr comments <n> [--all] [--full]` | Read unresolved review threads; include resolved threads or whole bodies. |
 | `pr wait-review <n> [--bot login] [--timeout-mins N]` | Wait for each login in `[review] wait_for` to review the newest commit; repeat `--bot` to replace the list. |
 | `gates [--dry-run]` | Run checks; dry run only prints the steps. |
+| `add <name> --about TEXT --run LINE` | Add a task to ladder.toml. Repeat `--run` for more steps; use `--shell bash` or `--confirm` when needed. |
 | `init` | Create a starter ladder.toml at the git repo root. |
 | `install-skill` | Install this page for Claude and Codex. |
 | `<task> [args]` | Run a project task. Extra args need 1 command. |

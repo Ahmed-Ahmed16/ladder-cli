@@ -46,7 +46,8 @@ class InitCliTests(SetupCase, unittest.TestCase):
                 self.assertEqual(parse(example, "example").tasks["test"].run,
                                  ("python -m unittest discover -s tests -t .",))
                 self.assertEqual(out, "This repo uses ladder for repeated jobs.\n"
-                                 "Run `ladder list` before writing any script; tasks live in ladder.toml.\n")
+                                 "Run `ladder list` before writing any script; save reusable scripts in "
+                                 "scripts/ladder/ and use `ladder add` to add tasks.\n")
                 self.assertFalse((self.repo / "AGENTS.md").exists())
                 Path(project.path).unlink()
                 marker.rmdir() if git_directory else marker.unlink()
