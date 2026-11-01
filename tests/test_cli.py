@@ -82,7 +82,7 @@ class CliTests(unittest.TestCase):
                 self.assertEqual((code, err.getvalue()), (0, ""))
 
     def test_future_core_jobs_are_reserved(self):
-        for name in ("gates", "init", "install-skill"):
+        for name in ("init", "install-skill"):
             with self.subTest(name=name):
                 code, out, err = self.invoke([name])
                 self.assertEqual((code, out), (1, ""))

@@ -42,15 +42,20 @@ class TaskCliTests(unittest.TestCase):
 
     def test_list_shows_core_jobs_then_project_tasks(self):
         tasks = [Task("test", "Run tests", ("python tests.py",)),
-                 Task("ship", "Ship changes", ("ship",), confirm=True)]
+                 Task("ship-release", "Ship changes", ("ship",), confirm=True)]
         code, out, err, steps, config = self.invoke(["list"], tasks)
         self.assertEqual((code, err, steps), (0, "", []))
         lines = out.splitlines()
         self.assertEqual([line.split()[0] for line in lines[:7]],
                          ["help", "list", "doctor", "pr", "gates", "init", "install-skill"])
         self.assertTrue(all(len(line.split(maxsplit=1)) == 2 for line in lines[:7]))
+        self.assertEqual([len(line) - len(line.lstrip()) for line in lines[:7]], [0] * 7)
+        for line in lines[:7]:
+            name, about = line.split(maxsplit=1)
+            self.assertEqual(line.index(about), 15)
+        self.assertEqual(lines[4], "gates          run project checks")
         self.assertEqual(lines[7:], [f"Project tasks (from {config.path}):",
-                                    "test  Run tests", "ship  Ship changes [needs --yes]"])
+                                    "test          Run tests", "ship-release  Ship changes [needs --yes]"])
 
     def test_list_without_file_succeeds(self):
         code, out, err, steps, _ = self.invoke(["list"], found=False)

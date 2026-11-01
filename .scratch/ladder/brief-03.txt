@@ -1,0 +1,37 @@
+<goal>
+In this repo (`ladder`, Python 3.12, stdlib only): fix 2 small ticket 02 issues, then build ticket 03 (`ladder gates`). Test first throughout.
+</goal>
+
+<read_first>
+docs/decisions.md (D15 for gates), docs/spec.md, .scratch/ladder/issues/03-gates.md, and all of src/ladder and tests/.
+</read_first>
+
+<fix_1_bash_on_windows>
+Verified bug: on this Windows PC, PATH resolves `bash` to C:\WINDOWS\system32\bash.exe, which is WSL, so a `shell = "bash"` task runs inside Linux without the project's tools. Fix in how the shell program is chosen for shell = "bash":
+1. Env var LADDER_BASH, if set: use it. If it is set but the file does not exist, raise a plain error naming LADDER_BASH; never fall through to a search.
+2. On Windows: Git Bash next to the git found on PATH: from git.exe at <root>\cmd\git.exe or <root>\bin\git.exe or <root>\mingw64\bin\git.exe, use <root>\bin\bash.exe if it exists.
+3. Otherwise `bash` from the PATH only lookup, but on Windows refuse a result inside the Windows System32 folder or a WindowsApps folder, with the error "bash: only WSL bash found; install Git for Windows or set LADDER_BASH".
+Tests with temp folders and patched PATH and env, covering each branch, positive and negative.
+</fix_1_bash_on_windows>
+
+<fix_2_list_columns>
+`ladder list` prints names and about text without alignment. Pad names so the about column lines up within each group (core jobs, project tasks). Remove "(not implemented yet)" from gates. Update tests.
+</fix_2_list_columns>
+
+<ticket_03_gates>
+`[gates]` in ladder.toml: `about` optional string, `run` required (string or non empty list of non empty strings, same rules as a task), `ci` optional string path relative to the ladder.toml folder. Any other key: error "<path>: gates: unknown key \"<key>\"". Validate in config (add to parse; keep parse readable) and expose as data on Config.
+`ladder gates`: no file or no [gates] -> plain message "no [gates] in ladder.toml", exit 1. Runs each step from the ladder.toml folder, no shell, streamed through the runner; after each step print "PASS step N of M: <line>" or "FAIL step N of M: <line> (exit X)"; stop at first failure; exit code = that step's code; final line "gates: all M passed" on success.
+`ladder gates --dry-run`: print each step line numbered, run nothing, exit 0.
+CI drift warning: when `ci` is set, read that file as text (missing file -> warning line, not failure). For each step, warn "warning: gate step N not found in <ci>: <line>" when the step's text, after collapsing whitespace, is not a substring of the CI file's text after collapsing whitespace. Warnings print before running, go to err, and never change the exit code. Known positive and negative tests.
+Extra args to gates other than --dry-run: plain error.
+</ticket_03_gates>
+
+<rules>
+- Approved; proceed without asking. Do NOT commit or push. Touch only this repo; do not edit docs/ or .scratch/. No scratch folders inside the repo.
+- Under 300 changed lines in src.
+- Final: `python -m unittest discover -s tests -t .` passes with 0 failures and 0 errors.
+</rules>
+
+<report>
+Files changed, test counts, every choice the brief did not specify.
+</report>

@@ -92,10 +92,49 @@ confirm = true
                 self.assert_bad(f'[tasks.{name}]\nabout = "Run tests"\nrun = "echo hi"',
                                 f'task "{name}" clashes with the core job "{name}", rename it')
 
-    def test_gates_and_review_are_kept_without_validation(self):
-        config = parse('[gates]\nsteps = [1]\n[review]\nwait_for = "later"', "ladder.toml")
-        self.assertEqual(config.gates, {"steps": [1]})
+    def test_gates_are_validated_while_review_is_kept(self):
+        config = parse('[gates]\nrun = "check"\n[review]\nwait_for = "later"', "ladder.toml")
+        self.assertEqual(config.gates, {"run": ("check",)})
         self.assertEqual(config.review, {"wait_for": "later"})
+
+    def test_gate_steps_and_optional_fields_are_exposed(self):
+        for run, expected in (('"check"', ("check",)),
+                              ('["check", "test"]', ("check", "test"))):
+            with self.subTest(run=run):
+                config = parse('[gates]\nabout = ""\nci = ".github/check.yml"\nrun = ' + run,
+                               "ladder.toml")
+                self.assertEqual(config.gates,
+                                 {"about": "", "ci": ".github/check.yml", "run": expected})
+
+    def test_gates_must_be_a_table(self):
+        self.assert_bad('gates = []', 'gates: must be a table')
+
+    def test_gates_need_non_empty_run(self):
+        # Cases: absent, empty, whitespace, wrong type, empty list, invalid list member.
+        for run in (None, '""', '"  "', '42', 'true', '[]', '["check", ""]',
+                    '["check", "  "]', '["check", 42]', '[["check"]]'):
+            with self.subTest(run=run):
+                text = '[gates]' + ('\nrun = ' + run if run is not None else '')
+                self.assert_bad(text, 'gates: run must be a non empty string or list of non empty strings')
+
+    def test_gates_reject_unknown_keys_including_task_only_options(self):
+        for key in ("steps", "shell", "confirm", "extra"):
+            with self.subTest(key=key):
+                self.assert_bad(f'[gates]\nrun = "check"\n{key} = true',
+                                f'gates: unknown key "{key}"')
+
+    def test_gates_about_must_be_text(self):
+        for about in ("42", "true", "[]"):
+            with self.subTest(about=about):
+                self.assert_bad('[gates]\nrun = "check"\nabout = ' + about,
+                                'gates: about must be a string')
+
+    def test_gates_ci_must_be_a_non_empty_relative_path(self):
+        for ci in ('42', 'true', '[]', '""', '"  "', '"/ci.yml"',
+                   "'C:\\checks\\ci.yml'", "'C:ci.yml'", "'\\\\host\\share\\ci.yml'"):
+            with self.subTest(ci=ci):
+                self.assert_bad('[gates]\nrun = "check"\nci = ' + ci,
+                                'gates: ci must be a non empty relative path')
 
     def test_missing_tasks_gives_empty_dict(self):
         config = parse("", "ladder.toml")

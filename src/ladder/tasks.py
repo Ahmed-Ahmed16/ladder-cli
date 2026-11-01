@@ -1,19 +1,13 @@
 from pathlib import Path
 import shlex
 
-from .process import LadderError
+from .process import LadderError, split_command
 
 
 def command(task, line, extra):
     if task.shell == "bash":
         return ["bash", "-c", line + (" " + shlex.join(extra) if extra else "")]
-    try:
-        argv = shlex.split(line, posix=True)
-    except ValueError as error:
-        raise LadderError(f'task "{task.name}": {error}') from error
-    if not argv or not argv[0]:
-        raise LadderError(f'task "{task.name}": run must name a program')
-    return [*argv, *extra]
+    return [*split_command(line, f'task "{task.name}"'), *extra]
 
 
 def run_task(config, argv, runner, err):

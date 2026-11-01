@@ -8,6 +8,7 @@ from .process import LadderError, Runner, plain, redact
 from .pr import comments
 from . import config
 from .tasks import run_task
+from .gates import run_gates, warn_ci
 
 
 CORE_ABOUT = {
@@ -15,7 +16,7 @@ CORE_ABOUT = {
     "list": "show core jobs and project tasks",
     "doctor": "check tools, sign in, Python, and ladder.toml",
     "pr": "read PR review threads",
-    "gates": "run project checks (not implemented yet)",
+    "gates": "run project checks",
     "init": "create a project file (not implemented yet)",
     "install-skill": "install agent guidance (not implemented yet)",
 }
@@ -44,7 +45,9 @@ def arguments():
     comments.add_argument("number", type=pr_number, metavar="PR number")
     comments.add_argument("--all", action="store_true", help="include resolved threads")
     comments.add_argument("--full", action="store_true", help="keep whole comment bodies")
-    for name in ("gates", "init", "install-skill"):
+    gates = jobs.add_parser("gates", help=CORE_ABOUT["gates"], allow_abbrev=False)
+    gates.add_argument("--dry-run", action="store_true", help="print steps without running them")
+    for name in ("init", "install-skill"):
         jobs.add_parser(name, help=CORE_ABOUT[name])
     return parser
 
@@ -68,15 +71,17 @@ def config_check(load_config):
 
 
 def list_jobs(project, out):
+    width = max(map(len, config.CORE_JOBS))
     for name in config.CORE_JOBS:
-        print(f"{name}  {CORE_ABOUT[name]}", file=out)
+        print(f"{name:<{width}}  {CORE_ABOUT[name]}", file=out)
     if project is None:
         print("no ladder.toml found", file=out)
         return
     print(f"Project tasks (from {plain(project.path)}):", file=out)
+    width = max((len(plain(name)) for name in project.tasks), default=0)
     for task in project.tasks.values():
         suffix = " [needs --yes]" if task.confirm else ""
-        print(f"{plain(task.name)}  {plain(task.about)}{suffix}", file=out)
+        print(f"{plain(task.name):<{width}}  {plain(task.about)}{suffix}", file=out)
 
 
 def doctor(runner, out, load_config):
@@ -116,6 +121,12 @@ def main(argv, runner, out, err, load_config=config.load) -> int:
             list_jobs(load_config(os.getcwd()), out)
         elif args.job == "pr":
             comments(args, runner, out)
+        elif args.job == "gates":
+            project = load_config(os.getcwd())
+            if project is None or not project.gates:
+                raise LadderError("no [gates] in ladder.toml")
+            warn_ci(project, err)
+            return run_gates(args, project, runner, out)
         else:
             raise LadderError(f'core job "{args.job}" is not implemented yet')
         return 0

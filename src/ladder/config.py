@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import tomllib
 
 from .process import LadderError
@@ -53,7 +53,10 @@ def parse(text: str, path: str) -> Config:
     2. Allowed top level keys: tasks, gates, review. Any other -> LadderError "<path>: unknown section \"<key>\"".
     3. tasks is a table of tables. Each task: `about` required non empty string; `run` required, a non empty string or a non empty list of non empty strings (a string becomes a 1 item tuple); `shell` optional, only "bash"; `confirm` optional bool. Any other key -> error naming it. Each error: LadderError "<path>: task \"<name>\": <problem>".
     4. A task name in CORE_JOBS -> LadderError "<path>: task \"<name>\" clashes with the core job \"<name>\", rename it".
-    5. gates and review are kept as plain dicts (empty when missing); later tickets check them.
+    5. gates accepts optional string about, required run (same rules as tasks),
+       and optional non empty relative ci path. Unknown keys are errors.
+       Missing gates is an empty dict; present gates has run as a tuple.
+       Review is kept without validation.
     '''
     try:
         sections = tomllib.loads(text)
@@ -68,7 +71,8 @@ def parse(text: str, path: str) -> Config:
     tasks = {}
     for name, settings in task_tables.items():
         tasks[name] = parse_task(settings, name, path)
-    return Config(path, tasks, sections.get("gates", {}), sections.get("review", {}))
+    gates = parse_gates(sections["gates"], path) if "gates" in sections else {}
+    return Config(path, tasks, gates, sections.get("review", {}))
 
 
 def non_empty_text(text):
@@ -81,6 +85,23 @@ def parse_run(run, prefix):
     if not isinstance(run, list) or not run or not all(non_empty_text(line) for line in run):
         raise LadderError(prefix + "run must be a non empty string or list of non empty strings")
     return tuple(run)
+
+
+def parse_gates(settings, path):
+    prefix = f"{path}: gates: "
+    if not isinstance(settings, dict):
+        raise LadderError(prefix + "must be a table")
+    for key in settings:
+        if key not in ("about", "run", "ci"):
+            raise LadderError(prefix + f'unknown key "{key}"')
+    if "about" in settings and not isinstance(settings["about"], str):
+        raise LadderError(prefix + "about must be a string")
+    run = parse_run(settings.get("run"), prefix)
+    if "ci" in settings:
+        ci = settings["ci"]
+        if not non_empty_text(ci) or PureWindowsPath(ci).anchor:
+            raise LadderError(prefix + "ci must be a non empty relative path")
+    return {**settings, "run": run}
 
 
 def parse_task(settings, name, path):
