@@ -90,6 +90,26 @@ Tasks and gates print `ladder: using <path>` to standard error before the steps.
 This includes dry runs. Exit 0 means success.
 Failed steps return their exit code; input errors exit 1.
 
+Every task and gates run (not `--dry-run`) writes its whole output to
+`<temp folder>/ladder/logs/<task or gates>-<YYYYMMDD-HHMMSS>.log` and ends with a summary line
+on standard output. The last line is the result and names the full log. Do not pipe ladder into `head` or `tail`.
+
+```text
+ladder: FAIL test, step 1 of 1, exit 3; full log: /tmp/ladder/logs/test-20261115-101500.log
+ladder: ok test, 2 steps; full log: /tmp/ladder/logs/test-20261115-101530.log
+FAIL step 2 of 3: python -m unittest (exit 2); full log: /tmp/ladder/logs/gates-20261115-101600.log
+gates: all 3 passed; full log: /tmp/ladder/logs/gates-20261115-101700.log
+```
+
+The log holds the same text as the screen, after secrets are redacted.
+On Linux and macOS the log folder must be a real folder that you own and nobody else can open,
+and each log file is created for you alone. Ladder refuses a link or a shared folder with an error.
+Set `LADDER_TIMEOUT=<seconds>` to stop any step that runs longer. The summary then says
+`timeout after <N>s (exit 124)`.
+
+Tasks with `shell = "bash"` run as `bash -o pipefail -c <line>`. A failed command before a pipe
+fails the task. A task that pipes into `head` can now fail with exit 141 when the reader closes early.
+
 ### Wait for reviews
 
 Choose the GitHub logins to wait for:

@@ -48,6 +48,21 @@ Wait-review prints `<sha>: waiting for <logins>` only when status changes, then 
 It reports head changes, polls every 30 s, and exits 1 on timeout (default 20 min) or when no reviewer is set.
 Exit 0 means success. A failed task or gate returns the step's exit code.
 Input errors and doctor failures exit 1. Failure stops later steps.
+
+Every task and gates run writes its whole output to a log file in the temp folder.
+It ends with 1 summary line that names that file. The last line is the result.
+Do not pipe ladder into `tail`, `head` or `grep` to find it. Run `ladder gates` alone, then read the last line.
+Example of a failed task, then a passing one:
+
+```text
+ladder: FAIL test, step 1 of 1, exit 3; full log: /tmp/ladder/logs/test-20261115-101500.log
+ladder: ok test, 2 steps; full log: /tmp/ladder/logs/test-20261115-101530.log
+```
+
+Gates end with `FAIL step 2 of 3: <command> (exit 2); full log: <path>` or `gates: all 3 passed; full log: <path>`.
+Read the log file for the rest of the output.
+Set `LADDER_TIMEOUT=<seconds>` to stop a step that runs too long.
+The line then says `timeout after <N>s (exit 124)`.
 `needs --yes` means ask the human first. Never add `--yes` on your own.
 
 Minimal ladder.toml:
@@ -64,4 +79,5 @@ run = ["python -m unittest discover -s tests -t ."]
 Run `ladder test` for the task, or `ladder gates` for the checks.
 Steps run from the repo root. No shell is used by default.
 Use `shell = "bash"` on a task only when it needs shell features.
+Bash tasks run with pipefail, so a failed command before a pipe fails the task.
 Use `confirm = true` for a task that needs human approval.

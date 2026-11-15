@@ -1,0 +1,57 @@
+{
+  "label": "b1",
+  "model": "claude-sonnet-5-5",
+  "question": "lab_gates",
+  "runs": [
+    {
+      "relay_exit": 0,
+      "answer_parsed": true,
+      "scores": {
+        "gates_passed": true,
+        "failed_step": true,
+        "first_error_line": true,
+        "next_command": true
+      },
+      "tool_calls": 2,
+      "piped_calls": 0,
+      "false_success": false,
+      "cost_usd": 0.0409113,
+      "run_pass": true
+    },
+    {
+      "relay_exit": 0,
+      "answer_parsed": true,
+      "scores": {
+        "gates_passed": true,
+        "failed_step": true,
+        "first_error_line": true,
+        "next_command": true
+      },
+      "tool_calls": 2,
+      "piped_calls": 1,
+      "false_success": false,
+      "cost_usd": 0.0343216,
+      "run_pass": true
+    },
+    {
+      "relay_exit": 0,
+      "answer_parsed": true,
+      "scores": {
+        "gates_passed": true,
+        "failed_step": true,
+        "first_error_line": true,
+        "next_command": true
+      },
+      "tool_calls": 2,
+      "piped_calls": 0,
+      "false_success": false,
+      "cost_usd": 0.0411933,
+      "run_pass": true
+    }
+  ],
+  "runs_passed": 3,
+  "false_success_count": 0,
+  "total_cost_usd": 0.11642620000000001,
+  "over_tool_budget": 0,
+  "total_piped_calls": 1
+}

@@ -57,8 +57,16 @@ def reviewer_login(text):
     return text.strip()
 
 
+RESULT_HELP = """Tasks and gates write the full output to a log file and end with a summary line that names it:
+  ladder: FAIL test, step 1 of 1, exit 3; full log: <path>
+The last line is the result. Do not pipe ladder into tail or head.
+LADDER_TIMEOUT=<seconds> stops a step that runs too long (exit 124).
+Tasks with shell = "bash" run with pipefail."""
+
+
 def arguments():
-    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | add | <task> [args]")
+    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | add | <task> [args]",
+                    epilog=RESULT_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     jobs = parser.add_subparsers(dest="job")
     job_parsers = {name: jobs.add_parser(name, help=config.CORE_JOBS[name],
                                        allow_abbrev=name not in ("gates", "add"))
@@ -203,7 +211,7 @@ JOBS = {
 def main(argv, context) -> int:
     try:
         if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
-            return run_task(context.project(), argv, context.runner, context.err)
+            return run_task(context.project(), argv, context.runner, context.out, context.err)
         parser = arguments()
         with redirect_stdout(context.out):
             args = parser.parse_args(argv)

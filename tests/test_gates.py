@@ -19,9 +19,12 @@ class GatesCliTests(unittest.TestCase):
         return f"ladder: using {self.root / 'ladder.toml'}\n"
 
     def setUp(self):
+        previous = tempfile.tempdir
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
+        self.addCleanup(setattr, tempfile, "tempdir", previous)
         self.root = Path(temporary.name).resolve()
+        tempfile.tempdir = str(self.root)
         (self.root / ".git").mkdir()
         (self.root / "nested").mkdir()
 
@@ -49,9 +52,11 @@ class GatesCliTests(unittest.TestCase):
         self.assertEqual((code, err), (0, self.using))
         self.assertEqual(steps, [(["check", "file name"], str(self.root)),
                                  (["test", "|", "literal"], str(self.root))])
+        path = Path(out.splitlines()[-1].rsplit("full log: ", 1)[1])
+        self.assertTrue(path.is_file())
         self.assertEqual(out, '$ check \'file name\'\nPASS step 1 of 2: check "file name"\n'
                               "$ test '|' literal\nPASS step 2 of 2: test | literal\n"
-                              "gates: all 2 passed\n")
+                              f"gates: all 2 passed; full log: {path}\n")
 
     def test_first_failed_step_stops_and_returns_its_exit_code(self):
         for codes, expected, lines in (((7,), 7, ["first"]),
@@ -62,10 +67,13 @@ class GatesCliTests(unittest.TestCase):
                     '[gates]\nrun = ["first", "second", "third"]', codes=codes)
                 self.assertEqual((code, err), (expected, self.using))
                 self.assertEqual([argv[0] for argv, _ in steps], lines)
+                path = Path(out.splitlines()[-1].rsplit("full log: ", 1)[1])
+                self.assertTrue(path.is_file())
                 expected_output = ""
                 for number, (line, status) in enumerate(zip(lines, codes), 1):
                     expected_output += f"$ {line}\n"
-                    expected_output += (f"FAIL step {number} of 3: {line} (exit {status})\n" if status
+                    expected_output += (f"FAIL step {number} of 3: {line} (exit {status}); "
+                                        f"full log: {path}\n" if status
                                         else f"PASS step {number} of 3: {line}\n")
                 self.assertEqual(out, expected_output)
 
@@ -73,6 +81,7 @@ class GatesCliTests(unittest.TestCase):
         self.assertEqual(self.invoke('[gates]\nrun = [\'check "file name"\', "test"]',
                                      args=("--dry-run",), codes=()),
                          (0, '1: check "file name"\n2: test\n', self.using, []))
+        self.assertFalse((self.root / "ladder" / "logs").exists())
 
     def test_gates_reject_extra_args_and_abbreviated_flags(self):
         for args in (("extra",), ("--yes",), ("--dry",), ("--dry-run", "extra")):
@@ -178,4 +187,7 @@ class GatesCliTests(unittest.TestCase):
                                      load_config=lambda _: load(self.root)))
         self.assertEqual(code, 1)
         self.assertEqual(err.getvalue(), self.using + "ladder: ./missing-program: not found\n")
-        self.assertTrue(out.getvalue().endswith("FAIL step 1 of 1: ./missing-program (exit 1)\n"))
+        path = Path(out.getvalue().splitlines()[-1].rsplit("full log: ", 1)[1])
+        self.assertTrue(path.is_file())
+        self.assertEqual(out.getvalue().splitlines()[-1],
+                         f"FAIL step 1 of 1: ./missing-program (exit 1); full log: {path}")

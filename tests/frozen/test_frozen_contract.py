@@ -12,12 +12,13 @@ from tests.frozen.harness import make_lab
 
 
 HERE = Path(__file__).resolve().parent
-FROZEN_CONTRACTS_SHA256 = "3133e8483dc7b31b4d99d591efe20c13debcc139d48ab1efb017baf567609c80"
+FROZEN_CONTRACTS_SHA256 = "815030414fced55f5dc1d08f25ed417c221ed32ed8845493823bebee2fd8aeb9"
 
 
 class FrozenContractTests(unittest.TestCase):
     def test_contracts_file_matches_the_frozen_hash(self):
         # A change after B1 starts needs Ahmed's yes and a dated addendum, so this hash moves only then.
+        # The one allowed edit so far: B1 filled replay_cases.timeout_control (2026-11-15).
         digest = hashlib.sha256((HERE / "contracts.json").read_bytes()).hexdigest()
         self.assertEqual(digest, FROZEN_CONTRACTS_SHA256)
 

@@ -1,17 +1,27 @@
+import math
 import os
 from pathlib import Path
 import re
 import shlex
 import shutil
+import signal
 import subprocess
+import threading
 import unicodedata
 
 
 WINDOWS = os.name == "nt"
+TIMEOUT_EXIT = 124
 
 
 class LadderError(Exception):
     pass
+
+
+class StepTimeout(LadderError):
+    def __init__(self, seconds):
+        self.seconds = seconds
+        super().__init__(f"step timed out after {seconds:g}s")
 
 
 def redact(message):
@@ -88,6 +98,34 @@ def bash_program():
     return program
 
 
+def timeout_seconds():
+    value = os.environ.get("LADDER_TIMEOUT")
+    if value is None:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        pass
+    else:
+        if math.isfinite(seconds) and seconds > 0:
+            return seconds
+    raise LadderError("LADDER_TIMEOUT: must be a number of seconds > 0")
+
+
+def expire_step(child, expired):
+    if child.poll() is not None:
+        return
+    expired.set()
+    if WINDOWS:
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(child.pid)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    else:
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
 class Runner:
     def __init__(self, out):
         self.out = out
@@ -125,12 +163,26 @@ class Runner:
         return captured.returncode, captured.stdout
 
     def stream(self, argv, cwd=None) -> int:
+        seconds = timeout_seconds()
         command = self._argv(argv, cwd)
+        options = {"start_new_session": True} if seconds is not None and not WINDOWS else {}
         try:
             with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                  text=True, encoding="utf-8", errors="replace", cwd=cwd) as child:
-                for line in child.stdout:
-                    print(redact(line), file=self.out, end="", flush=True)
-                return child.wait()
+                                  text=True, encoding="utf-8", errors="replace", cwd=cwd, **options) as child:
+                expired = threading.Event()
+                timer = threading.Timer(seconds, expire_step, args=(child, expired)) if seconds is not None else None
+                if timer is not None:
+                    timer.start()
+                try:
+                    for line in child.stdout:
+                        print(redact(line), file=self.out, end="", flush=True)
+                    code = child.wait()
+                finally:
+                    if timer is not None:
+                        timer.cancel()
+                        timer.join()
+                if expired.is_set():
+                    raise StepTimeout(seconds)
+                return code
         except OSError as error:
             raise LadderError(f"could not start {plain(argv[0])}: {plain(str(error))}") from error

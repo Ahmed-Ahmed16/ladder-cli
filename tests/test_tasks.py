@@ -2,6 +2,7 @@ import io
 import os
 from pathlib import Path
 import shlex
+import tempfile
 import unittest
 
 from ladder.cli import Context, main
@@ -23,6 +24,13 @@ class TaskRunner(FakeRunner):
 
 
 class TaskCliTests(unittest.TestCase):
+    def setUp(self):
+        previous = tempfile.tempdir
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.addCleanup(setattr, tempfile, "tempdir", previous)
+        tempfile.tempdir = temporary.name
+
     @property
     def using(self):
         return f"ladder: using {Path(os.getcwd()) / 'project' / 'ladder.toml'}\n"
@@ -92,19 +100,24 @@ class TaskCliTests(unittest.TestCase):
         task = Task("test", "Run tests", ("echo ready | cat",), shell="bash")
         code, _, err, steps, config = self.invoke(["test", "a b", "$(bad)", "'"], [task])
         self.assertEqual((code, err), (0, self.using))
-        self.assertEqual(steps, [(["bash", "-c", "echo ready | cat " + shlex.join(["a b", "$(bad)", "'"])],
+        self.assertEqual(steps, [(["bash", "-o", "pipefail", "-c",
+                                  "echo ready | cat " + shlex.join(["a b", "$(bad)", "'"])],
                                  str(Path(config.path).parent))])
 
     def test_multiple_steps_run_in_order_and_stop_on_failure(self):
         task = Task("test", "Run tests", ("first", "second", "third"))
         for codes, expected_names, expected_code, message in (
-                ((0, 0, 0), ["first", "second", "third"], 0, ""),
-                ((7,), ["first"], 7, "ladder: step 1 of 3 failed (exit 7)\n"),
-                ((0, 9), ["first", "second"], 9, "ladder: step 2 of 3 failed (exit 9)\n")):
+                ((0, 0, 0), ["first", "second", "third"], 0, "ladder: ok test, 3 steps"),
+                ((7,), ["first"], 7, "ladder: FAIL test, step 1 of 3, exit 7"),
+                ((0, 9), ["first", "second"], 9, "ladder: FAIL test, step 2 of 3, exit 9")):
             with self.subTest(codes=codes):
-                code, _, err, steps, _ = self.invoke(["test"], [task], codes)
-                self.assertEqual((code, err), (expected_code, self.using + message))
+                code, out, err, steps, _ = self.invoke(["test"], [task], codes)
+                self.assertEqual((code, err), (expected_code, self.using))
                 self.assertEqual([argv[0] for argv, _ in steps], expected_names)
+                path = Path(out.splitlines()[-1].rsplit("full log: ", 1)[1])
+                self.assertTrue(path.is_file())
+                self.assertEqual(out.splitlines()[-1],
+                                 f"{message}; full log: {path}")
 
     def test_extra_args_are_refused_for_multiple_steps(self):
         task = Task("test", "Run tests", ("first", "second"))
@@ -132,7 +145,8 @@ class TaskCliTests(unittest.TestCase):
                 self.assertEqual((code, err), (0, self.using))
                 folder = str(Path(config.path).parent)
                 commands = [["first"], ["second"]] if shell is None else [
-                    ["bash", "-c", "first"], ["bash", "-c", "second"]]
+                    ["bash", "-o", "pipefail", "-c", "first"],
+                    ["bash", "-o", "pipefail", "-c", "second"]]
                 self.assertEqual(steps, [(command, folder) for command in commands])
 
     def test_multiple_steps_with_confirm_refuse_invalid_args(self):
@@ -160,8 +174,12 @@ class TaskCliTests(unittest.TestCase):
         code = main(["check"], Context(TaskRunner(combined, (0, 0)), combined, combined,
                                      load_config=lambda _: project))
         self.assertEqual(code, 0)
-        self.assertEqual(combined.getvalue().splitlines(),
-                         ["ladder: using project/ladder.toml", "$ first", "$ second"])
+        lines = combined.getvalue().splitlines()
+        path = Path(lines[-1].rsplit("full log: ", 1)[1])
+        self.assertTrue(path.is_file())
+        self.assertEqual(lines,
+                         ["ladder: using project/ladder.toml", "$ first", "$ second",
+                          f"ladder: ok check, 2 steps; full log: {path}"])
 
     def test_config_error_is_a_plain_error(self):
         for argv in (["list"], ["test"]):

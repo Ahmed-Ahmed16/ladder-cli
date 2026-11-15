@@ -107,9 +107,12 @@ class RunnerTests(unittest.TestCase):
 
 class BashRunnerTests(unittest.TestCase):
     def setUp(self):
+        previous = tempfile.tempdir
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
+        self.addCleanup(setattr, tempfile, "tempdir", previous)
         self.root = Path(temporary.name).resolve()
+        tempfile.tempdir = str(self.root)
         environment = patch.dict(os.environ, {
             "PATH": "", "PATHEXT": ".exe", "SystemRoot": str(self.root / "Windows")
         }, clear=True)
@@ -243,7 +246,12 @@ class BashRunnerTests(unittest.TestCase):
             child.wait.return_value = 0
             code = main(["check"], Context(Runner(out), out, err,
                                          load_config=lambda _: project))
-            self.assertEqual(popen.call_args.args[0], [str(bash), "-c", "echo hi | cat"])
+            self.assertEqual(popen.call_args.args[0],
+                             [str(bash), "-o", "pipefail", "-c", "echo hi | cat"])
             self.assertEqual(popen.call_args.kwargs["cwd"], str(self.root / "project"))
         self.assertEqual((code, err.getvalue()), (0, f"ladder: using {project.path}\n"))
-        self.assertTrue(out.getvalue().endswith("checked\n"))
+        lines = out.getvalue().splitlines()
+        path = Path(lines[-1].rsplit("full log: ", 1)[1])
+        self.assertTrue(path.is_file())
+        self.assertEqual(lines[-2:], ["checked",
+                                     f"ladder: ok check, 1 step; full log: {path}"])

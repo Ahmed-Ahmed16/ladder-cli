@@ -35,7 +35,7 @@
       {"id": "longfail150",    "argv": ["longfail150"],       "expect_exit": 1,        "must_fail": true, "log_contains": "ERROR-synthetic-at-150", "used_by": ["B3a", "B3b"]}
     ],
     "fail_summary_rule": "Every case with must_fail=true (except nosuch) needs, in last3: a line matching the word FAIL, and a log_path. Both may be the same line. Source: build plan B1.",
-    "timeout_control": {"env": {}, "args": [], "note": "B1 chooses how ladder is told to time out (a task setting, an env var or a flag). B1 may fill only this field, and says so in its commit. The expectations above stay. Today the field is empty and ladder has no timeout."},
+    "timeout_control": {"env": {"LADDER_TIMEOUT": "2"}, "args": [], "note": "B1 chooses how ladder is told to time out (a task setting, an env var or a flag). B1 may fill only this field, and says so in its commit. The expectations above stay. B1 filled the field: the env var LADDER_TIMEOUT (seconds per step) is 2 for the timeout case."},
     "cases_not_scored_for_exit": "The B1 minimum applies to the 9 B1 cases (all except longfail150).",
     "b1_cases": ["fail", "long", "longfail", "pipe", "multi", "gates", "gates_dry_run", "nosuch", "timeout"]
   },
