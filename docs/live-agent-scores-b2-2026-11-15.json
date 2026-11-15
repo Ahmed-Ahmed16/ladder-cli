@@ -1,0 +1,63 @@
+{
+  "label": "b2",
+  "model": "claude-sonnet-5-5",
+  "question": "lab_gates_agent_mode",
+  "runs": [
+    {
+      "relay_exit": 0,
+      "answer_parsed": true,
+      "scores": {
+        "gates_passed": true,
+        "failed_step": true,
+        "first_error_line": true,
+        "next_command": true
+      },
+      "tool_calls": 2,
+      "ladder_calls": 2,
+      "piped_calls": 0,
+      "using_line_seen_in_tool_output": false,
+      "false_success": false,
+      "cost_usd": 0.0556847,
+      "run_pass": true
+    },
+    {
+      "relay_exit": 0,
+      "answer_parsed": true,
+      "scores": {
+        "gates_passed": true,
+        "failed_step": true,
+        "first_error_line": true,
+        "next_command": true
+      },
+      "tool_calls": 2,
+      "ladder_calls": 2,
+      "piped_calls": 0,
+      "using_line_seen_in_tool_output": false,
+      "false_success": false,
+      "cost_usd": 0.0399678,
+      "run_pass": true
+    },
+    {
+      "relay_exit": 0,
+      "answer_parsed": true,
+      "scores": {
+        "gates_passed": true,
+        "failed_step": true,
+        "first_error_line": true,
+        "next_command": true
+      },
+      "tool_calls": 2,
+      "ladder_calls": 2,
+      "piped_calls": 0,
+      "using_line_seen_in_tool_output": false,
+      "false_success": false,
+      "cost_usd": 0.0400449,
+      "run_pass": true
+    }
+  ],
+  "runs_passed": 3,
+  "false_success_count": 0,
+  "total_cost_usd": 0.1356974,
+  "over_tool_budget": 0,
+  "total_piped_calls": 0
+}

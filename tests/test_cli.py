@@ -60,10 +60,10 @@ class FakeRunner:
 
 
 class CliTests(unittest.TestCase):
-    def invoke(self, argv, answers=None):
+    def invoke(self, argv, answers=None, *, agent=False, mode_reason="no agent signal"):
         out, err = io.StringIO(), io.StringIO()
         code = main(argv, Context(FakeRunner(out, answers), out, err,
-                                 load_config=lambda start: None))
+                                 load_config=lambda start: None, agent=agent, mode_reason=mode_reason))
         return code, out.getvalue(), err.getvalue()
 
     def test_help_lists_ticket_commands(self):
@@ -73,6 +73,39 @@ class CliTests(unittest.TestCase):
                 self.assertEqual((code, err), (0, ""))
                 for command in ("help", "list", "doctor", "pr comments", "<task> [args]"):
                     self.assertIn(command, out)
+
+    def test_help_teaches_agent_mode_and_human_override(self):
+        code, out, err = self.invoke(["--help"])
+        self.assertEqual((code, err), (0, ""))
+        for text in ("CLAUDECODE", "stdout is not a terminal", "LADDER_AGENT=1",
+                     "LADDER_AGENT=0", "leading --human", "ladder: using <path>",
+                     "ladder doctor", "ladder --human gates"):
+            self.assertIn(text, out)
+
+    def test_human_alone_shows_help_in_agent_mode(self):
+        code, out, err = self.invoke(["--human"], agent=True)
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn("usage: ladder", out)
+
+    def test_doctor_mode_follows_config_line_in_both_modes(self):
+        for agent, reason in ((False, "no agent signal"), (True, "LADDER_AGENT=1")):
+            with self.subTest(agent=agent):
+                code, out, err = self.invoke(["doctor"], DOCTOR, agent=agent, mode_reason=reason)
+                self.assertEqual((code, err), (0, ""))
+                mode = "agent" if agent else "human"
+                self.assertEqual(out.splitlines()[-3:], [
+                    "ok   ladder.toml: none in this repo",
+                    f"ok   mode: {mode} ({reason})", "doctor: all checks passed"])
+
+    def test_human_override_reports_its_reason_without_changing_context(self):
+        out, err = io.StringIO(), io.StringIO()
+        context = Context(FakeRunner(out, DOCTOR), out, err, load_config=lambda _: None,
+                          agent=True, mode_reason="LADDER_AGENT=1")
+        self.assertEqual(main(["--human", "doctor"], context), 0)
+        self.assertEqual(err.getvalue(), "")
+        self.assertIn("ok   mode: human (--human)\n", out.getvalue())
+        self.assertTrue(context.agent)
+        self.assertEqual(context.mode_reason, "LADDER_AGENT=1")
 
     def test_doctor_about_text_matches_in_help_and_list(self):
         about = "check tools, sign in, Python, and ladder.toml"

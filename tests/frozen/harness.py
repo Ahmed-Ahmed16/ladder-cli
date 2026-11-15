@@ -79,17 +79,19 @@ def _kill_tree(child, job=None):
             pass
 
 
-def run_ladder(build_src, argv, cwd, env_set=None, env_remove=(), wall_clock_s=60):
+def run_ladder(build_src, argv, cwd, env_set=None, env_remove=(), wall_clock_s=60, *, launcher=None):
     env = os.environ.copy()
     env.update(env_set or {})
     for name in env_remove:
         env.pop(name, None)
     env["PYTHONPATH"] = str(Path(build_src).resolve())
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    command = ([sys.executable, str(launcher), *argv] if launcher is not None
+               else [sys.executable, "-m", "ladder", *argv])
     job = _WindowsJob() if os.name == "nt" else None
     options = {"start_new_session": True} if job is None else {"creationflags": 0x00000004}
     try:
-        with subprocess.Popen([sys.executable, "-m", "ladder", *argv], cwd=cwd, env=env,
+        with subprocess.Popen(command, cwd=cwd, env=env,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True, encoding="utf-8", errors="replace", **options) as child:
             if job is not None:

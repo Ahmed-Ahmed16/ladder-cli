@@ -11,18 +11,24 @@ def command(task, line, extra):
     return [*split_command(line, f'task "{task.name}"'), *extra]
 
 
-def run_task(config, argv, runner, out, err):
-    name, *extra = argv
-    task = config.tasks.get(name) if config is not None else None
-    if task is None:
-        raise LadderError(f'unknown job or task "{name}"; run ladder list')
+def checked_args(task, name, extra):
     if task.confirm and "--yes" not in extra:
         raise LadderError(f'task "{name}" needs --yes')
     if len(task.run) > 1:
         extra = [arg for arg in extra if arg != "--yes"]
         if extra:
             raise LadderError(f'task "{name}" accepts extra args only with 1 run line')
-    print(f"ladder: using {plain(config.path)}", file=err, flush=True)
+    return extra
+
+
+def run_task(config, argv, runner, out, err, *, announce=True):
+    name, *extra = argv
+    task = config.tasks.get(name) if config is not None else None
+    if task is None:
+        raise LadderError(f'unknown job or task "{name}"; run ladder list')
+    extra = checked_args(task, name, extra)
+    if announce:
+        print(f"ladder: using {plain(config.path)}", file=err, flush=True)
     with logged(runner, out, name) as (tee, path):
         total = len(task.run)
         for step, line in enumerate(task.run, 1):

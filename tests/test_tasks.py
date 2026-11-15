@@ -35,7 +35,7 @@ class TaskCliTests(unittest.TestCase):
     def using(self):
         return f"ladder: using {Path(os.getcwd()) / 'project' / 'ladder.toml'}\n"
 
-    def invoke(self, argv, tasks=(), codes=(0,), error=None, found=True):
+    def invoke(self, argv, tasks=(), codes=(0,), error=None, found=True, *, agent=False):
         out, err = io.StringIO(), io.StringIO()
         runner = TaskRunner(out, codes)
         path = str(Path(os.getcwd()) / "project" / "ladder.toml")
@@ -48,7 +48,7 @@ class TaskCliTests(unittest.TestCase):
                 raise error
             return config if found else None
 
-        code = main(argv, Context(runner, out, err, load_config=load))
+        code = main(argv, Context(runner, out, err, load_config=load, agent=agent))
         self.assertEqual(starts, [os.getcwd()])
         return code, out.getvalue(), err.getvalue(), runner.steps, config
 
@@ -89,6 +89,21 @@ class TaskCliTests(unittest.TestCase):
         self.assertEqual(steps, [(["python", "tools/check file.py", "a b", "--flag"],
                                  str(Path(config.path).parent))])
         self.assertTrue(out.startswith("$ python "))
+
+    def test_mode_controls_using_line_for_tasks(self):
+        task = Task("test", "Run tests", ("check",))
+        for agent, prefix in ((False, []), (True, []), (True, ["--human"])):
+            with self.subTest(agent=agent, prefix=prefix):
+                code, out, err, steps, _ = self.invoke(prefix + ["test"], [task], agent=agent)
+                self.assertEqual((code, err), (0, self.using if prefix or not agent else ""))
+                self.assertEqual([argv for argv, _ in steps], [["check"]])
+                self.assertIn("ladder: ok test, 1 step; full log: ", out)
+
+    def test_nonleading_human_is_a_task_argument(self):
+        task = Task("test", "Run tests", ("check",))
+        code, _, err, steps, _ = self.invoke(["test", "--human"], [task], agent=True)
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual([argv for argv, _ in steps], [["check", "--human"]])
 
     def test_task_name_starting_with_dash_is_still_a_task(self):
         task = Task("-check", "Run checks", ("check",))

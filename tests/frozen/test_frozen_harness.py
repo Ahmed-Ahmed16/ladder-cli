@@ -118,6 +118,20 @@ class FrozenHarnessTests(unittest.TestCase):
         self.assertEqual(json.loads(result.lines[0]),
                          [str(self.cwd), ["fake-task", "arg with space"]])
 
+    def test_tty_launcher_sets_isatty_and_preserves_argv(self):
+        self.stub('''
+            import json
+            import sys
+            print(json.dumps([sys.stdout.isatty(), sys.argv]))
+        ''')
+        launcher = Path(__file__).with_name("tty_launcher.py")
+        result = run_ladder(self.build, ["doctor", "arg with space"], self.cwd,
+                            launcher=launcher)
+        self.assertEqual(result.exit_code, 0)
+        self.assertFalse(result.timed_out)
+        self.assertEqual(json.loads(result.lines[0]),
+                         [True, ["ladder", "doctor", "arg with space"]])
+
     def test_env_can_remove_inherited_claudecode_and_set_child_values(self):
         self.stub('''
             import json

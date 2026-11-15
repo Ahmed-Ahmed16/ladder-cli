@@ -86,8 +86,8 @@ run = ["python -m unittest discover -s tests -t ."]
 
 `ladder gates` stops on failure and prints PASS or FAIL for each step.
 `--dry-run` prints the steps without running them.
-Tasks and gates print `ladder: using <path>` to standard error before the steps.
-This includes dry runs. Exit 0 means success.
+In human mode, tasks and gates print `ladder: using <path>` to standard error before the steps.
+Dry runs print this line in human mode too. Exit 0 means success.
 Failed steps return their exit code; input errors exit 1.
 
 Every task and gates run (not `--dry-run`) writes its whole output to
@@ -109,6 +109,17 @@ Set `LADDER_TIMEOUT=<seconds>` to stop any step that runs longer. The summary th
 
 Tasks with `shell = "bash"` run as `bash -o pipefail -c <line>`. A failed command before a pipe
 fails the task. A task that pipes into `head` can now fail with exit 141 when the reader closes early.
+
+### Agent mode
+
+Agent mode is on when `CLAUDECODE` is non-empty and stdout is not a terminal.
+Set `LADDER_AGENT=0` or put `--human` first for full human output.
+Set `LADDER_AGENT=1` to force agent mode.
+For now, agent mode only drops the `ladder: using <path>` line, including dry runs.
+`ladder doctor` shows the mode and the config path.
+Example: `ladder doctor` prints `ok   mode: agent (CLAUDECODE set, no TTY)`.
+
+Use `ladder --human gates` to show the full human output for 1 run.
 
 ### Wait for reviews
 

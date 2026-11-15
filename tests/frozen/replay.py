@@ -81,8 +81,7 @@ def matrix_cells(contract):
 
 
 def matrix_case(build_src, cell, offline_env):
-    if cell["tty"] == "yes":
-        return not_run(cell["id"], "no_pty")
+    launcher = FROZEN / "tty_launcher.py" if cell["tty"] == "yes" else None
     with tempfile.TemporaryDirectory(prefix="ladder-b2-") as scratch:
         lab = make_lab(Path(scratch) / "lab")
         env = dict(offline_env)
@@ -95,9 +94,10 @@ def matrix_case(build_src, cell, offline_env):
             remove.append("LADDER_AGENT")
         else:
             env["LADDER_AGENT"] = cell["override"].split("=", 1)[1]
-        doctor = run_ladder(build_src, ["doctor"], lab, env_set=env, env_remove=remove)
+        doctor = run_ladder(build_src, ["doctor"], lab, env_set=env, env_remove=remove,
+                            launcher=launcher)
         dryrun = run_ladder(build_src, ["gates", "--dry-run"], lab,
-                            env_set=env, env_remove=remove)
+                            env_set=env, env_remove=remove, launcher=launcher)
         return score_matrix_cell(cell, doctor, dryrun)
 
 

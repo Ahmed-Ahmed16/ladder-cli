@@ -1,6 +1,6 @@
 import argparse
 from contextlib import redirect_stdout
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 import sys
@@ -11,6 +11,7 @@ from typing import Callable, TextIO
 from .process import LadderError, Runner, plain, redact
 from .pr import comments
 from . import config
+from .mode import agent_mode
 from .tasks import run_task
 from .gates import run_gates, warn_ci
 from .setup import init, install_skill
@@ -27,6 +28,8 @@ class Context:
     home: Path | None = None
     clock: Callable[[], float] = time.monotonic
     sleep: Callable[[float], None] = time.sleep
+    agent: bool = False
+    mode_reason: str = "no agent signal"
 
     def project(self):
         return self.load_config(os.getcwd())
@@ -61,7 +64,14 @@ RESULT_HELP = """Tasks and gates write the full output to a log file and end wit
   ladder: FAIL test, step 1 of 1, exit 3; full log: <path>
 The last line is the result. Do not pipe ladder into tail or head.
 LADDER_TIMEOUT=<seconds> stops a step that runs too long (exit 124).
-Tasks with shell = "bash" run with pipefail."""
+Tasks with shell = "bash" run with pipefail.
+
+Agent mode is on when CLAUDECODE is non-empty and stdout is not a terminal.
+LADDER_AGENT=1 forces agent mode.
+LADDER_AGENT=0 or a leading --human forces the full human output.
+Agent mode does not print the ladder: using <path> line.
+ladder doctor shows the mode and the config path.
+Example: ladder --human gates"""
 
 
 def arguments():
@@ -145,6 +155,7 @@ def doctor(context):
     code, label = config_check(context)
     failed += code != 0
     print(f"{'FAIL' if code else 'ok  '} ladder.toml: {plain(label)}", file=out)
+    print(f"ok   mode: {'agent' if context.agent else 'human'} ({context.mode_reason})", file=out)
     print(f"doctor: {failed} check(s) failed" if failed else "doctor: all checks passed", file=out)
     return int(failed != 0)
 
@@ -176,7 +187,8 @@ def gates_job(args, context):
     project = context.project()
     if project is None or not project.gates:
         raise LadderError("no [gates] in ladder.toml")
-    print(f"ladder: using {plain(project.path)}", file=context.err, flush=True)
+    if not context.agent:
+        print(f"ladder: using {plain(project.path)}", file=context.err, flush=True)
     warn_ci(project, context.err)
     return run_gates(args, project, context.runner, context.out)
 
@@ -210,8 +222,12 @@ JOBS = {
 
 def main(argv, context) -> int:
     try:
+        if argv[:1] == ["--human"]:
+            argv = argv[1:]
+            context = replace(context, agent=False, mode_reason="--human")
         if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
-            return run_task(context.project(), argv, context.runner, context.out, context.err)
+            return run_task(context.project(), argv, context.runner, context.out, context.err,
+                            announce=not context.agent)
         parser = arguments()
         with redirect_stdout(context.out):
             args = parser.parse_args(argv)
@@ -229,4 +245,6 @@ def main(argv, context) -> int:
 
 
 def run():
-    sys.exit(main(sys.argv[1:], Context(Runner(sys.stdout), sys.stdout, sys.stderr)))
+    agent, reason = agent_mode(os.environ, sys.stdout.isatty())
+    context = Context(Runner(sys.stdout), sys.stdout, sys.stderr, agent=agent, mode_reason=reason)
+    sys.exit(main(sys.argv[1:], context))

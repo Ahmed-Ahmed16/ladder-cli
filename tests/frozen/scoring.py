@@ -115,17 +115,16 @@ def expected_mode(cell):
 
 
 def score_matrix_cell(cell, doctor_result, dryrun_result):
-    """Score mode selection. Windows TTY cells remain explicitly unrun."""
+    """Score mode selection for both injected terminals and real pipes."""
     cell_id = cell.get("id", ",".join(key + "=" + cell[key] for key in ("tty", "claudecode", "override")))
-    if cell["tty"] == "yes":
-        return {"id": cell_id, "status": "NOT_RUN", "reason": "no_pty", "false_success": False, "checks": {}}
     mode = expected_mode(cell)
     checks = {
         "not_timed_out": not doctor_result.timed_out and not dryrun_result.timed_out,
         "mode_line": any(line.startswith("ok   mode: " + mode) for line in doctor_result.lines),
         "using_line": any(line.startswith("ladder: using ") for line in dryrun_result.lines) == (mode == "human"),
     }
-    return _score(doctor_result, checks, id=cell_id)
+    method = "injected_isatty" if cell["tty"] == "yes" else "real_pipe"
+    return _score(doctor_result, checks, id=cell_id, tty_method=method)
 
 
 def score_b3(spec, result, log_result=None):

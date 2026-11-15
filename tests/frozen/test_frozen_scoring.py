@@ -184,16 +184,16 @@ class FrozenScoringTests(unittest.TestCase):
             with self.subTest(cell=cell):
                 self.assertEqual(scoring.expected_mode(cell), mode)
 
-    def test_matrix_pipe_cells_pass_and_tty_cells_are_not_run(self):
+    def test_all_matrix_cells_pass_with_correct_inputs(self):
         for tty, claude, override, mode, using_line in MODE_CELLS:
             cell = {"tty": tty, "claudecode": claude, "override": override}
             doctor = RunResult(1, ["ok   mode: " + mode + " (details)"])
             dryrun = RunResult(0, ["ladder: using C:/repo/ladder.toml"] if using_line else [])
             with self.subTest(cell=cell):
                 score = scoring.score_matrix_cell(cell, doctor, dryrun)
-                self.assertEqual(score["status"], "NOT_RUN" if tty == "yes" else "PASS")
-                if tty == "yes":
-                    self.assertEqual(score["reason"], "no_pty")
+                self.assertEqual(score["status"], "PASS")
+                self.assertEqual(score["tty_method"],
+                                 "injected_isatty" if tty == "yes" else "real_pipe")
 
     def test_matrix_rejects_wrong_mode_using_line_or_timeout(self):
         cell = {"tty": "no", "claudecode": "set", "override": "none"}

@@ -1,0 +1,267 @@
+{
+  "meta": {
+    "label": "b1-matrix-12",
+    "date": "2026-11-15",
+    "python_version": "3.12.10",
+    "src_tree_hash": "08ac7ef0c4c87a5c1de26c7955f12040d8742b80",
+    "build_src": "src",
+    "contracts_sha256": "815030414fced55f5dc1d08f25ed417c221ed32ed8845493823bebee2fd8aeb9"
+  },
+  "rows": {
+    "B2": [
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=yes,claudecode=set,override=none",
+        "tty_method": "injected_isatty"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": false
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=yes,claudecode=set,override=LADDER_AGENT=1",
+        "tty_method": "injected_isatty"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=yes,claudecode=set,override=LADDER_AGENT=0",
+        "tty_method": "injected_isatty"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=yes,claudecode=unset,override=none",
+        "tty_method": "injected_isatty"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": false
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=yes,claudecode=unset,override=LADDER_AGENT=1",
+        "tty_method": "injected_isatty"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=yes,claudecode=unset,override=LADDER_AGENT=0",
+        "tty_method": "injected_isatty"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": false
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=no,claudecode=set,override=none",
+        "tty_method": "real_pipe"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": false
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=no,claudecode=set,override=LADDER_AGENT=1",
+        "tty_method": "real_pipe"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=no,claudecode=set,override=LADDER_AGENT=0",
+        "tty_method": "real_pipe"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=no,claudecode=unset,override=none",
+        "tty_method": "real_pipe"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": false
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=no,claudecode=unset,override=LADDER_AGENT=1",
+        "tty_method": "real_pipe"
+      },
+      {
+        "status": "FAIL",
+        "false_success": false,
+        "checks": {
+          "not_timed_out": true,
+          "mode_line": false,
+          "using_line": true
+        },
+        "observed": {
+          "exit_code": 1,
+          "line_count": 9,
+          "last_line_class": "child_line",
+          "timed_out": false
+        },
+        "id": "tty=no,claudecode=unset,override=LADDER_AGENT=0",
+        "tty_method": "real_pipe"
+      }
+    ],
+    "B5": {
+      "status": "NOT_RUN",
+      "reason": "not_built_before_b5"
+    },
+    "agent_questions": {
+      "lab_gates": {
+        "status": "NOT_RUN",
+        "reason": "no_live_agent_run_in_b0"
+      },
+      "lab_gates_agent_mode": {
+        "status": "NOT_RUN",
+        "reason": "no_live_agent_run_in_b0"
+      },
+      "lab_longfail150": {
+        "status": "NOT_RUN",
+        "reason": "no_live_agent_run_in_b0"
+      },
+      "pr_states": {
+        "status": "NOT_RUN",
+        "reason": "no_live_agent_run_in_b0"
+      },
+      "tasks_b5": {
+        "status": "NOT_RUN",
+        "reason": "no_live_agent_run_in_b0"
+      }
+    }
+  },
+  "verdicts": {
+    "B2": {
+      "pass": false,
+      "pass_count": 0,
+      "fail_count": 12,
+      "not_run_count": 1,
+      "false_success_count": 0
+    },
+    "B5": {
+      "pass": false,
+      "pass_count": 0,
+      "fail_count": 0,
+      "not_run_count": 1,
+      "false_success_count": 0
+    },
+    "overall": {
+      "pass": false,
+      "pass_count": 0,
+      "fail_count": 12,
+      "not_run_count": 6,
+      "false_success_count": 0
+    }
+  }
+}

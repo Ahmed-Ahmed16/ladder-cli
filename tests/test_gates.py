@@ -28,7 +28,7 @@ class GatesCliTests(unittest.TestCase):
         (self.root / ".git").mkdir()
         (self.root / "nested").mkdir()
 
-    def invoke(self, text, args=(), codes=(0,)):
+    def invoke(self, text, args=(), codes=(0,), *, agent=False, human=False):
         path = self.root / "ladder.toml"
         if text is None:
             path.unlink(missing_ok=True)
@@ -37,7 +37,8 @@ class GatesCliTests(unittest.TestCase):
         out, err = io.StringIO(), io.StringIO()
         runner = TaskRunner(out, codes)
         with patch("os.getcwd", return_value=str(self.root / "nested")):
-            code = main(["gates", *args], Context(runner, out, err))
+            argv = (["--human"] if human else []) + ["gates", *args]
+            code = main(argv, Context(runner, out, err, agent=agent))
         return code, out.getvalue(), err.getvalue(), runner.steps
 
     def test_missing_file_or_section_is_a_plain_error(self):
@@ -83,8 +84,28 @@ class GatesCliTests(unittest.TestCase):
                          (0, '1: check "file name"\n2: test\n', self.using, []))
         self.assertFalse((self.root / "ladder" / "logs").exists())
 
+    def test_mode_controls_using_line_for_gates_and_dry_run(self):
+        for agent, human in ((False, False), (True, False), (True, True)):
+            for args in ((), ("--dry-run",)):
+                with self.subTest(agent=agent, human=human, args=args):
+                    code, out, err, steps = self.invoke(
+                        '[gates]\nrun = "check"', args=args, agent=agent, human=human)
+                    self.assertEqual(code, 0)
+                    self.assertEqual(err, self.using if human or not agent else "")
+                    self.assertEqual(len(steps), 0 if args else 1)
+                    self.assertIn("1: check" if args else "gates: all 1 passed", out)
+
+    def test_agent_mode_keeps_ci_warnings(self):
+        (self.root / "ci.yml").write_text("other", encoding="utf-8")
+        for args in ((), ("--dry-run",)):
+            with self.subTest(args=args):
+                code, _, err, _ = self.invoke(
+                    '[gates]\nci = "ci.yml"\nrun = "check"', args=args, agent=True)
+                self.assertEqual(code, 0)
+                self.assertEqual(err, "warning: gate step 1 not found in ci.yml: check\n")
+
     def test_gates_reject_extra_args_and_abbreviated_flags(self):
-        for args in (("extra",), ("--yes",), ("--dry",), ("--dry-run", "extra")):
+        for args in (("extra",), ("--yes",), ("--human",), ("--dry",), ("--dry-run", "extra")):
             with self.subTest(args=args):
                 code, out, err, steps = self.invoke('[gates]\nrun = "check"', args=args)
                 self.assertEqual((code, out, steps), (1, "", []))

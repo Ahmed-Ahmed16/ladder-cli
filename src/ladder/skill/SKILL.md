@@ -39,7 +39,7 @@ Read `ladder help` and `ladder <job> --help` for arguments.
 Put `ladder` before each job: `ladder gates`.
 Ladder reads only the nearest git repo root's ladder.toml.
 It reads no config outside a git repo. Subfolder configs are ignored.
-Tasks and gates print `ladder: using <path>` to standard error before steps.
+In human mode, tasks and gates print `ladder: using <path>` to standard error before steps.
 
 `$ ...` lines show the outside commands ladder ran.
 Gates print PASS for each passing step and FAIL for a failed step.
@@ -64,6 +64,15 @@ Read the log file for the rest of the output.
 Set `LADDER_TIMEOUT=<seconds>` to stop a step that runs too long.
 The line then says `timeout after <N>s (exit 124)`.
 `needs --yes` means ask the human first. Never add `--yes` on your own.
+
+## Agent mode
+
+Agent mode is on when `CLAUDECODE` is non-empty and stdout is not a terminal.
+Set `LADDER_AGENT=0` or put `--human` first for full human output.
+Set `LADDER_AGENT=1` to force agent mode.
+For now, agent mode only drops the `ladder: using <path>` line, including dry runs.
+`ladder doctor` shows the mode and the config path.
+Example: `ladder doctor` prints `ok   mode: agent (CLAUDECODE set, no TTY)`.
 
 Minimal ladder.toml:
 
