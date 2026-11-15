@@ -1,0 +1,100 @@
+{
+  "id": "pr-api-error",
+  "calls": [
+    { "match": ["--version"], "exit": 1, "stdout": "", "stderr": "HTTP 502: Bad Gateway\n" },
+    { "match": ["auth", "status"], "exit": 1, "stdout": "", "stderr": "HTTP 502: Bad Gateway\n" },
+    {
+      "match": [
+        "pr",
+        "view"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "pr",
+        "checks"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "api",
+        "graphql"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "--log-failed"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "201",
+        "--log-failed"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "--log"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "201",
+        "--log"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "run",
+        "view"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [
+        "run",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    },
+    {
+      "match": [],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "HTTP 502: Bad Gateway\n"
+    }
+  ]
+}

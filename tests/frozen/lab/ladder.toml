@@ -1,0 +1,31 @@
+[tasks.fail]
+about = "Print 3 lines, then exit 3"
+run = "python gen.py 3 3"
+
+[tasks.long]
+about = "Print 300 lines, then exit 0"
+run = "python gen.py 300 0"
+
+[tasks.longfail]
+about = "Print the error first, then 300 lines, then exit 1"
+run = "python gen.py 300 1 ERROR-database-not-found"
+
+[tasks.pipe]
+about = "A failed command piped into cat"
+shell = "bash"
+run = "python gen.py 2 5 | cat"
+
+[tasks.multi]
+about = "2 steps, the 2nd fails"
+run = ["python gen.py 1 0", "python gen.py 2 4"]
+
+[gates]
+run = ["python gen.py 2 0", "python gen.py 300 2 ERROR-lint-failed", "python gen.py 1 0"]
+
+[tasks.timeout]
+about = "Sleep 60 seconds before the output"
+run = "python gen.py 3 0 --sleep 60"
+
+[tasks.longfail150]
+about = "Put the error at line 150, then exit 1"
+run = 'python gen.py 300 1 --at 150 "FAILED test_widget_rounding: ERROR-synthetic-at-150"'

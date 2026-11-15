@@ -1,0 +1,156 @@
+{
+  "frozen_on": "2026-11-15",
+  "frozen_by": "B0 (ladder-0)",
+  "rule": "Never change after B1 starts. A change needs Ahmed's yes and a new dated addendum file, not an edit.",
+  "plan_source": "DevOps research/agent-cli-talk-2026-11-15/build-plan-2026-11-15.md, table 'Frozen test contracts'",
+  "scoring": {
+    "replay_case": "PASS only if every frozen observable of the case matches. Any miss is FAIL. A case that cannot run is NOT_RUN: it never counts as a pass and is always listed.",
+    "false_success": "A false success is any case, state or answer where ladder or the agent reports success (exit 0, an ok/PASS/passed/green last line, or the answer 'yes' for green) while the frozen truth is failure or unknown. One false success fails the build at once, whatever the score.",
+    "agent_question": "An answer is right only if the normalised value equals the frozen value. Run r is the r-th repetition of all questions of a build. A run passes only if every question in it is right.",
+    "agent_arms": "Arms are the pre-B1 build and the build under test. Same fixed model id, same call budget, same lab repo, fresh `claude -p` session per question per run.",
+    "stored_data": "Labels, booleans, counts, numeric ranges and fixture ids only. No child output text, no transcript text."
+  },
+  "agent_run": {
+    "model_id": "claude-sonnet-5-5",
+    "model_id_note": "Chosen by B0; the plan says 'fixed model id' and names none. Ahmed may veto before B1.",
+    "runs_per_question_per_arm": 3,
+    "max_turns": 6,
+    "max_tool_calls_default": 4,
+    "answer_format": "One JSON object on the last line of the reply, keys as listed per question.",
+    "billing_note": "Live runs bill the Console via the API worker, never the bare claude CLI (global delegate rule). B0 did not run any live agent question: pre-B1 agent scores are ___.",
+    "piped_call_rule": "Every tool call that pipes ladder output into head, tail, grep, sed, Select-Object or Select-String is counted. It fails a run only where a build row says 'no pipe'."
+  },
+  "replay_cases": {
+    "note": "Observables use the merged stream (stdout and stderr on one pipe), as an agent sees it. 'last3' = last 3 non-empty lines. 'log_path' = a path ending .log in last3 that exists on disk.",
+    "cases": [
+      {"id": "fail",           "argv": ["fail"],              "expect_exit": 3,        "must_fail": true},
+      {"id": "long",           "argv": ["long"],              "expect_exit": 0,        "must_fail": false},
+      {"id": "longfail",       "argv": ["longfail"],          "expect_exit": 1,        "must_fail": true, "log_contains": "ERROR-database-not-found"},
+      {"id": "pipe",           "argv": ["pipe"],              "expect_exit": 5,        "must_fail": true},
+      {"id": "multi",          "argv": ["multi"],             "expect_exit": 4,        "must_fail": true},
+      {"id": "gates",          "argv": ["gates"],             "expect_exit": 2,        "must_fail": true, "log_contains": "ERROR-lint-failed"},
+      {"id": "gates_dry_run",  "argv": ["gates", "--dry-run"],"expect_exit": 0,        "must_fail": false, "expect_lines": 3, "ignore_line_prefixes": ["ladder: using"]},
+      {"id": "nosuch",         "argv": ["nosuch"],            "expect_exit": 1,        "must_fail": true, "expect_lines": 1, "expect_text": "unknown job or task"},
+      {"id": "timeout",        "argv": ["timeout"],           "expect_exit": "nonzero","must_fail": true, "last3_contains_word": "timeout", "harness_wall_clock_s": 8, "ladder_must_stop_itself": true},
+      {"id": "longfail150",    "argv": ["longfail150"],       "expect_exit": 1,        "must_fail": true, "log_contains": "ERROR-synthetic-at-150", "used_by": ["B3a", "B3b"]}
+    ],
+    "fail_summary_rule": "Every case with must_fail=true (except nosuch) needs, in last3: a line matching the word FAIL, and a log_path. Both may be the same line. Source: build plan B1.",
+    "timeout_control": {"env": {}, "args": [], "note": "B1 chooses how ladder is told to time out (a task setting, an env var or a flag). B1 may fill only this field, and says so in its commit. The expectations above stay. Today the field is empty and ladder has no timeout."},
+    "cases_not_scored_for_exit": "The B1 minimum applies to the 9 B1 cases (all except longfail150).",
+    "b1_cases": ["fail", "long", "longfail", "pipe", "multi", "gates", "gates_dry_run", "nosuch", "timeout"]
+  },
+  "builds": {
+    "B1": {
+      "replay": "b1_cases",
+      "pass_rule": "All 9 cases PASS, 0 false success.",
+      "questions": "lab_gates",
+      "min_agent": "4 of 4 right in every run (3 runs), 0 false success"
+    },
+    "B2": {
+      "replay": "matrix",
+      "pass_rule": "All matrix cells PASS (cells that need a pseudo-terminal count only when run), plus the B1 pass rule unchanged.",
+      "questions": "lab_gates_agent_mode",
+      "min_agent": "as B1"
+    },
+    "B3a_B3b": {
+      "replay": {
+        "long_agent_mode": {"case": "long", "mode": "agent", "max_total_lines": 45, "needs_cut_line": true, "cut_line_regex": "(showing \\d+ of \\d+|\\d+ lines cut)", "cut_line_names_log_path": true},
+        "longfail150_agent_mode": {"case": "longfail150", "mode": "agent", "max_total_lines": 45, "log_read": {"command_note": "B3b defines the exact ladder log call; the log name or path comes from the summary line. B0 freezes only the result. B3b may change only argv_template, and says so in its commit.", "argv_template": ["log", "{log}", "--grep", "{pattern}"], "pattern": "ERROR-synthetic-at-150", "result_contains": "ERROR-synthetic-at-150", "exit": 0, "max_lines": 10}}
+      },
+      "max_total_lines_note": "Plan: at most 40 lines plus the showing line. The wrapper adds a command echo line and a summary line, so the frozen cap is 45 total lines. 40 child lines + 1 cut line + echo + summary = 43; 2 spare.",
+      "questions": "lab_longfail150",
+      "min_agent": "3 of 3 runs, in at most 2 tool calls, no pipe"
+    },
+    "B4": {
+      "replay": "pr_states",
+      "pass_rule": "All 6 states PASS, 0 false green.",
+      "questions": "pr_states",
+      "min_agent": "All answers right, 1 ladder call per state, 0 false green"
+    },
+    "B5": {
+      "replay": "drift tests (written in B5); doctor on a stale installed copy prints the stale line",
+      "questions": "tasks_b5",
+      "min_agent": "2 of 2 tasks in 3 of 3 runs"
+    },
+    "B6b": {
+      "replay": "claude_sample.json on pre-B1, B1 and B5 builds",
+      "metric": "Per sample slot: need met without a pipe, yes or no. Report the share. No minimum.",
+      "claim_limit": "Claude calls only, unless a Codex sample is added.",
+      "skill_receipt": "yes, no or ___, from direct evidence only. Installed is not received."
+    }
+  },
+  "matrix": {
+    "axes": {
+      "tty": ["yes", "no"],
+      "claudecode": ["set", "unset"],
+      "override": ["none", "LADDER_AGENT=1", "LADDER_AGENT=0"]
+    },
+    "override_note": "Plan says 'override on/off'. Ticket 10 has two override values (1 forces agent, 0 forces human), so 'on' is split in two. 12 cells.",
+    "claudecode_set_means": "CLAUDECODE=1 in the child environment. 'unset' means the variable is removed. The harness must set or remove it on purpose, because the session that runs it has CLAUDECODE=1.",
+    "rule": "override LADDER_AGENT=1 -> agent. LADDER_AGENT=0 -> human. No override -> agent only if CLAUDECODE is set AND there is no TTY, else human. Source: build plan B2 (it adds the TTY condition to ticket 10).",
+    "observables": {
+      "mode_line": "`ladder doctor` prints a line starting `ok   mode: agent` or `ok   mode: human`. The text after it is not frozen.",
+      "using_line": "In `ladder gates --dry-run` the stderr line `ladder: using <path>` is present in human mode and absent in agent mode (idea 5)."
+    },
+    "tty_yes_note": "TTY=yes needs a pseudo-terminal. Python's standard library has none on Windows and winpty needs a real console, so these 6 cells are NOT_RUN in B0 (reason: no_pty). B2 may run them through an injected isatty hook and must say so."
+  },
+  "questions": {
+    "lab_gates": {
+      "repo": "lab with the checklist ladder.toml, tell the agent to run the gates",
+      "prompt": "In this folder, run the project checks with ladder. Do not edit files. Reply with one JSON object on the last line: {\"gates_passed\": \"yes|no\", \"failed_step\": <number>, \"first_error_line\": \"<exact text>\", \"next_command\": \"<exact command>\"}. For next_command give the exact command that runs all the checks again after a fix.",
+      "answers": {"gates_passed": "no", "failed_step": 2, "first_error_line": "ERROR-lint-failed", "next_command": "ladder gates"},
+      "normalise": "trim, lowercase for yes/no, strip backticks and a leading '$ ' from commands, collapse spaces",
+      "first_error_line_match": "equals after trim, or the line is the one that contains ERROR-lint-failed",
+      "max_tool_calls": 4
+    },
+    "lab_gates_agent_mode": {"same_as": "lab_gates", "env": {"CLAUDECODE": "1"}, "note": "Same 4 questions, run with CLAUDECODE=1 and no TTY (an agent session already is that)."},
+    "lab_longfail150": {
+      "repo": "lab with task longfail150",
+      "prompt": "In this folder, run the ladder task longfail150. Do not edit files. Reply with one JSON object on the last line: {\"failed_test\": \"<name>\", \"first_error_line\": \"<exact text>\"}.",
+      "answers": {"failed_test": "test_widget_rounding", "first_error_line": "FAILED test_widget_rounding: ERROR-synthetic-at-150"},
+      "first_error_line_match": "contains ERROR-synthetic-at-150",
+      "max_tool_calls": 2,
+      "no_pipe": true
+    },
+    "pr_states": {
+      "prompt": "A fake `gh` is installed for this run. In this folder, find the state of the current PR with ladder. Reply with one JSON object on the last line: {\"green\": \"yes|no|unknown\", \"failed_check\": \"<name>|none|unknown\", \"first_error_line\": \"<exact text>|none|log not available|unknown\", \"review_pending\": \"yes|no|unknown\"}.",
+      "max_ladder_calls": 1,
+      "states": {
+        "pr-green":          {"green": "yes",     "failed_check": "none",       "first_error_line": "none",                          "review_pending": "no"},
+        "pr-one-failed":     {"green": "no",      "failed_check": "unit-tests", "first_error_line": "ERROR-synthetic-unit-failed",   "review_pending": "no"},
+        "pr-review-pending": {"green": "yes",     "failed_check": "none",       "first_error_line": "none",                          "review_pending": "yes"},
+        "pr-no-checks":      {"green": "unknown", "failed_check": "none",       "first_error_line": "none",                          "review_pending": "no"},
+        "pr-log-missing":    {"green": "no",      "failed_check": "lint",       "first_error_line": "log not available",             "review_pending": "no"},
+        "pr-api-error":      {"green": "unknown", "failed_check": "unknown",    "first_error_line": "unknown",                       "review_pending": "unknown"}
+      },
+      "green_definition": "green = at least 1 check, all checks pass, none failed or pending. Review state does not change green. No checks is unknown, never yes.",
+      "false_green": "The answer green=yes for any state whose truth is not yes, or ladder exit 0 with no sign of the failure."
+    },
+    "tasks_b5": {
+      "prompt": "You have only the installed ladder skill. Reply with one JSON object on the last line: {\"command\": \"<exact command>\"}. Task: <task text>",
+      "tasks": [
+        {"id": "check_before_commit", "text": "Check the repo before you commit.", "answer": "ladder gates"},
+        {"id": "pr_green",            "text": "Is my PR green?",                   "answer": "ladder pr status"}
+      ],
+      "normalise": "trim, strip backticks and a leading '$ ', collapse spaces; exact match"
+    }
+  },
+  "pr_replay": {
+    "note": "Every gh call is answered by tests/frozen/fake_gh.py from tests/frozen/pr_states/<id>.json. No network. The command under test is `ladder pr status` (B4).",
+    "per_state": {
+      "pr-green":          {"expect_exit": 0,         "must_contain": [],                                        "must_not_be_empty": true},
+      "pr-one-failed":     {"expect_exit": 0,         "must_contain": ["unit-tests", "ERROR-synthetic-unit-failed"]},
+      "pr-review-pending": {"expect_exit": 0,         "must_contain": ["pending"]},
+      "pr-no-checks":      {"expect_exit": 0,         "must_contain": ["no checks"]},
+      "pr-log-missing":    {"expect_exit": 0,         "must_contain": ["lint", "log not available"]},
+      "pr-api-error":      {"expect_exit": "nonzero", "max_lines": 3}
+    },
+    "contain_rule": "Case-insensitive substring match on the merged output.",
+    "false_green_replay": "A false green in replay = exit 0 with a failed check named in the state but absent from the output, or exit 0 on pr-api-error.",
+    "hosted_smoke_test": "Outside the score."
+  },
+  "privacy": {
+    "fake_secret_marker": "ZZ-FAKE-SECRET-B0-7F3A91",
+    "marker_paths": "The marker is placed in child output (stdout and stderr), in an environment variable, in a PR state log line and in a harness error path. After a run it must not appear in any file the harness writes (scores json, report md, error file), nor in the harness's own stdout or stderr."
+  }
+}

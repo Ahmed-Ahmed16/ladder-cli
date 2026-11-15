@@ -1,0 +1,92 @@
+{
+  "id": "pr-log-missing",
+  "calls": [
+    {
+      "match": [
+        "pr",
+        "view"
+      ],
+      "exit": 0,
+      "stdout": "{\"number\":101,\"url\":\"https://example.invalid/synthetic/pull/101\",\"state\":\"OPEN\",\"title\":\"synthetic PR\",\"headRefName\":\"synthetic-branch\",\"baseRefName\":\"synthetic-main\",\"headRefOid\":\"0000000000000000000000000000000000000101\",\"isDraft\":false,\"mergeable\":\"MERGEABLE\",\"mergeStateStatus\":\"BLOCKED\",\"reviewDecision\":\"APPROVED\",\"reviewRequests\":[],\"latestReviews\":[{\"author\":{\"login\":\"synthetic-reviewer\"},\"state\":\"APPROVED\",\"commit\":{\"oid\":\"0000000000000000000000000000000000000101\"}}],\"reviews\":[{\"author\":{\"login\":\"synthetic-reviewer\"},\"state\":\"APPROVED\"}],\"statusCheckRollup\":[{\"__typename\":\"CheckRun\",\"name\":\"unit-tests\",\"status\":\"COMPLETED\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflowName\":\"synthetic-checks\",\"checkSuite\":{\"workflowRun\":{\"databaseId\":201}}},{\"__typename\":\"CheckRun\",\"name\":\"lint\",\"status\":\"COMPLETED\",\"conclusion\":\"FAILURE\",\"detailsUrl\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflowName\":\"synthetic-checks\",\"checkSuite\":{\"workflowRun\":{\"databaseId\":201}}},{\"__typename\":\"CheckRun\",\"name\":\"synthetic-build\",\"status\":\"COMPLETED\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflowName\":\"synthetic-checks\",\"checkSuite\":{\"workflowRun\":{\"databaseId\":201}}},{\"__typename\":\"CheckRun\",\"name\":\"synthetic-types\",\"status\":\"COMPLETED\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflowName\":\"synthetic-checks\",\"checkSuite\":{\"workflowRun\":{\"databaseId\":201}}},{\"__typename\":\"CheckRun\",\"name\":\"synthetic-format\",\"status\":\"COMPLETED\",\"conclusion\":\"SUCCESS\",\"detailsUrl\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflowName\":\"synthetic-checks\",\"checkSuite\":{\"workflowRun\":{\"databaseId\":201}}}]}\n",
+      "stderr": ""
+    },
+    {
+      "match": [
+        "pr",
+        "checks"
+      ],
+      "exit": 1,
+      "stdout": "[{\"name\":\"unit-tests\",\"bucket\":\"pass\",\"state\":\"SUCCESS\",\"link\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflow\":\"synthetic-checks\",\"event\":\"pull_request\"},{\"name\":\"lint\",\"bucket\":\"fail\",\"state\":\"FAILURE\",\"link\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflow\":\"synthetic-checks\",\"event\":\"pull_request\"},{\"name\":\"synthetic-build\",\"bucket\":\"pass\",\"state\":\"SUCCESS\",\"link\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflow\":\"synthetic-checks\",\"event\":\"pull_request\"},{\"name\":\"synthetic-types\",\"bucket\":\"pass\",\"state\":\"SUCCESS\",\"link\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflow\":\"synthetic-checks\",\"event\":\"pull_request\"},{\"name\":\"synthetic-format\",\"bucket\":\"pass\",\"state\":\"SUCCESS\",\"link\":\"https://example.invalid/synthetic/actions/runs/201\",\"workflow\":\"synthetic-checks\",\"event\":\"pull_request\"}]\n",
+      "stderr": ""
+    },
+    {
+      "match": [
+        "api",
+        "graphql"
+      ],
+      "exit": 0,
+      "stdout": "{\"data\":{\"repository\":{\"pullRequest\":{\"reviewThreads\":{\"nodes\":[]}}}}}\n",
+      "stderr": ""
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "--log-failed"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "log not found\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "201",
+        "--log-failed"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "log not found\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "--log"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "log not found\n"
+    },
+    {
+      "match": [
+        "run",
+        "view",
+        "201",
+        "--log"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "log not found\n"
+    },
+    {
+      "match": [
+        "run",
+        "view"
+      ],
+      "exit": 0,
+      "stdout": "{\"databaseId\":201,\"name\":\"synthetic-checks\",\"workflowName\":\"synthetic-checks\",\"headBranch\":\"synthetic-branch\",\"headSha\":\"0000000000000000000000000000000000000101\",\"event\":\"pull_request\",\"status\":\"completed\",\"conclusion\":\"failure\",\"url\":\"https://example.invalid/synthetic/actions/runs/201\",\"jobs\":[{\"databaseId\":301,\"name\":\"unit-tests\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/301\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]},{\"databaseId\":302,\"name\":\"lint\",\"status\":\"completed\",\"conclusion\":\"failure\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/302\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"failure\"}]},{\"databaseId\":303,\"name\":\"synthetic-build\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/303\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]},{\"databaseId\":304,\"name\":\"synthetic-types\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/304\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]},{\"databaseId\":305,\"name\":\"synthetic-format\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/305\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]}]}\n",
+      "stderr": ""
+    },
+    {
+      "match": [
+        "run",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[{\"databaseId\":201,\"name\":\"synthetic-checks\",\"workflowName\":\"synthetic-checks\",\"headBranch\":\"synthetic-branch\",\"headSha\":\"0000000000000000000000000000000000000101\",\"event\":\"pull_request\",\"status\":\"completed\",\"conclusion\":\"failure\",\"url\":\"https://example.invalid/synthetic/actions/runs/201\",\"jobs\":[{\"databaseId\":301,\"name\":\"unit-tests\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/301\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]},{\"databaseId\":302,\"name\":\"lint\",\"status\":\"completed\",\"conclusion\":\"failure\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/302\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"failure\"}]},{\"databaseId\":303,\"name\":\"synthetic-build\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/303\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]},{\"databaseId\":304,\"name\":\"synthetic-types\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/304\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]},{\"databaseId\":305,\"name\":\"synthetic-format\",\"status\":\"completed\",\"conclusion\":\"success\",\"url\":\"https://example.invalid/synthetic/actions/runs/201/job/305\",\"steps\":[{\"name\":\"synthetic-step\",\"number\":1,\"status\":\"completed\",\"conclusion\":\"success\"}]}]}]\n",
+      "stderr": ""
+    }
+  ]
+}

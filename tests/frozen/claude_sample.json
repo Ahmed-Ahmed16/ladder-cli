@@ -1,0 +1,309 @@
+{
+  "frozen_on": "2026-11-15",
+  "source": {
+    "repo": "DevOps",
+    "file": "research/transcript-audit-2026-11-15.json",
+    "file_last_commit": "3c57abd",
+    "sha256": "40c540fd3307c9d2191d8466330de44db082b1317282f16c4517c70d13505fa9",
+    "generated_utc": "2026-11-15T12:37:09.076Z",
+    "metric": "by_source.claude.pipe_tax, keys that start with 'ladder>'",
+    "agent": "claude only (no Codex)",
+    "window": "all Claude transcripts from 2026-08-06 to the generation time of the source file; transcripts grew after it, so a later re-run may count more",
+    "claude_ladder_calls_total": 103,
+    "piped_total": 46,
+    "sink_counts": {
+      "tail": 18,
+      "Select-Object": 12,
+      "head": 10,
+      "grep": 4,
+      "sed": 1,
+      "Select-String": 1
+    },
+    "note": "by_source.claude.pipe_any gives 44 (Select-Object 10, not 12); the 46 follows pipe_tax. Per-call need labels and fixture ids are ___ until ticket 14b (B6a) exports them; B6a fills only the need and fixture_id fields.",
+    "allowed_need": [
+      "result",
+      "error_line",
+      "full_log",
+      "count",
+      "other"
+    ]
+  },
+  "slots": [
+    {
+      "id": "C-001",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-002",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-003",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-004",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-005",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-006",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-007",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-008",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-009",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-010",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-011",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-012",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-013",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-014",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-015",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-016",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-017",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-018",
+      "sink": "tail",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-019",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-020",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-021",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-022",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-023",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-024",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-025",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-026",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-027",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-028",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-029",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-030",
+      "sink": "Select-Object",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-031",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-032",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-033",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-034",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-035",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-036",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-037",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-038",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-039",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-040",
+      "sink": "head",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-041",
+      "sink": "grep",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-042",
+      "sink": "grep",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-043",
+      "sink": "grep",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-044",
+      "sink": "grep",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-045",
+      "sink": "sed",
+      "need": null,
+      "fixture_id": null
+    },
+    {
+      "id": "C-046",
+      "sink": "Select-String",
+      "need": null,
+      "fixture_id": null
+    }
+  ]
+}
