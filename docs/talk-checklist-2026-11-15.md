@@ -83,3 +83,65 @@ Notes:
 4. **13 help and skill drift.** Stale help text exists today. Small.
 5. **12 pr comments limits.** Real gap, but 0 uses in the transcripts.
 6. **14 and 14b replay set.** Makes later changes measurable. Only about 23 calls exist so far, so it pays off later.
+
+## Ranking with audit numbers (2026-11-15)
+
+Source: `research/transcript-audit-2026-11-15.md` and `research/transcript-audit-2026-11-15.json` in the DevOps repo. These numbers replace the hand count of 23 calls for this ranking.
+
+Scope of the numbers:
+
+* Ladder calls: 536 in all. 103 are Claude calls and 433 are Codex calls. In the post-ladder window (2026-11-11 to 2026-11-15) there are 76.
+* Pipe rate on ladder, Claude, all time: 46 of 103 calls (45%) went into `tail`, `head`, `grep`, `Select-Object`, `sed` or `Select-String`. The Codex split is not counted here.
+* "all" means Claude, all time, from the audit JSON. "w_1029" means 2026-09-29 to 2026-10-29. "post" means 2026-11-11 to 2026-11-15.
+* "at least" means the sum of the pipe pairs listed in the JSON. Other pairs may exist.
+
+### Ranked tickets
+
+| Rank | Ticket | Fixes | Audit number it rests on |
+| --- | --- | --- | --- |
+| 1 | 08 fail loudly, summary last | The agent pipes ladder output into `head` or `tail` to find the result. | 46 of 103 ladder calls piped (45%, all). 76 ladder calls (post). Also 845 exit-code failures (w_1029) and 106 (post). |
+| 2 | 10 agent mode switch | Lets ticket 11 cut output for agents only. Build it first. | Same 46 of 103 (all). This ticket changes no output by itself. |
+| 3 | 11 output cap in agent mode | Shows the first 10 and last 30 lines, with a marker and the log path. | Same 46 of 103 (all): tail 18, Select-Object 12, head 10, grep 4, sed 1, Select-String 1. |
+| 4 | 15 `ladder pr status` (new) | Gives one short PR status, so agents do not pipe `gh` reads. | At least 1938 of 3825 `gh` calls piped (51%, all). |
+| 5 | 14 replay runner | Measures the piped rate and the output change for each build. | Baseline: 46 of 103 (all) and 76 (post). This ticket adds no count of its own. |
+| 6 | 14b extract calls | Writes the real calls file that ticket 14 replays. | The audit miner already reads the same ladder calls (46 of 103, all). Keep only the calls-file output, and reuse `scripts/ladder/transcript-audit.mjs` for parsing. |
+| 7 | 09 pipefail | Stops a false pass: lab `exit 5 \| cat` gave exit 0. | No audit count. Pipes inside ladder tasks were not counted. Severity high, frequency `___`. |
+| 8 | 13 help and skill drift | Stale help text and the gates message with no `ladder.toml`. | No audit count. Ladder ran 76 calls in the post window against 745 git calls. See the addendum on the skill text. |
+| 9 | 12 pr comments limits | Hides threads and cuts bodies with no note. | No audit count. The hand count found 0 `pr comments` calls in 23. Check whether ticket 15 covers the same reads before building. |
+
+### Addenda to existing tickets
+
+These are text changes for the tickets. The ticket files are not changed yet.
+
+* 08: add a timeout case. A task that times out ends with the same FAIL line, and the line says `timeout`. Audit: `timeout` 281 (w_1029) and 74 (post). The pair "timeout, then the same tool again" is 266 (all).
+* 13: the skill trigger text names the 3 most common uses: gates before a commit, PR comments, and the repo tests. Audit: 76 ladder calls (post) against 745 git calls (post).
+
+### New ticket
+
+* 15 `ladder pr status`. File: `.scratch/ladder/issues/15-pr-status.md`. Rests on 1938 `gh` pipe pairs (at least, all).
+
+### Issues ladder cannot fix
+
+These have no ticket. Each row names the owner.
+
+| Issue | Audit number | Owner | Next step |
+| --- | --- | --- | --- |
+| `git` output piped into `head`, `grep`, `tail`, `wc`, `sed` | 5366 of 11191 (w_1029). 409 of 745 (post). | Rule text in `~/.claude/CLAUDE.md` and the project `AGENTS.md` files. | Ahmed chooses the wording. A ladder task for git reads is not planned: the calls are ad hoc. |
+| `relay.mjs` output piped | at least 658 of 1350 (all) | The relay tool, outside ladder-cli. | Add a quiet or `--last N` flag there. |
+| `run-tests.sh` output piped | at least 304 of 427 (all) | Each repo's test script. | Ladder helps only when the repo runs it as a ladder task, after tickets 08 and 11. |
+| `papercut.py` output piped | at least 196 of 442 (all) | The work-brain papercut script. | Add a quiet mode there. |
+| `mita.py` output piped | at least 45 of 67 (all) | The mita repo tool. | Its owner decides. |
+| Same tool again after a failed call | top 3 recovery pairs: 951, 713, 579 (all) | Rule text, and papercut on the 2nd failure. | Rule: read the error, then change the approach. |
+| Unclear error labels (`other`) | 1233 (w_1029). 123 (post). | DevOps audit miner. | A second pass to label them. `___` |
+| Calls blocked by a hook | 636 (w_1029). 63 (post). | The hook authors. | Check that each hook message says what to do next. |
+| File or path missing | 591 (w_1029). 54 (post). | Rule text on Windows paths. | `___` |
+| Permission and sandbox errors | 471 (w_1029). 21 (post). | Codex brief text in `codex-delegate`. | Already a papercut from 2026-11-12. |
+| Python throwaway commands | 4563 (w_1029). 177 (post). | Inline-code hook (exists) and ticket 07 (done). | Falling. No new work. |
+| Long PowerShell scripts in one call | 257 (w_1029). 225 (post). Claude all time: 2009 `ps_long_script`. | Rule text: a script over about 10 lines goes to a file. | `ladder add` (ticket 07, done) covers the repeats. |
+
+### Notes on the counts
+
+* The detector limits in audit section 8 apply. `user_rejected` and `timeout` are broad matches.
+* No hand check was done on the labels. `___`
+* Only ladder calls are counted in the ranking. The other tools are listed only as owner notes.
+
