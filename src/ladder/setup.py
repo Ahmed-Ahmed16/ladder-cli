@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 
 from .config import repo_root
-from .process import LadderError
+from .process import LadderError, plain
 
 
 START = b"<!-- ladder:start -->"
@@ -79,14 +79,33 @@ def atomic_write(path, content):
             temporary.unlink(missing_ok=True)
 
 
+def skill_paths(home=None):
+    home = Path.home() if home is None else Path(home)
+    return tuple(home / folder / "skills" / "ladder" / "SKILL.md"
+                 for folder in (".claude", ".agents"))
+
+
+def check_skills(out, home=None):
+    page = files("ladder").joinpath("skill/SKILL.md").read_bytes()
+    installed = [(path, read_existing(path)) for path in skill_paths(home)]
+    installed = [(path, content) for path, content in installed if content is not None]
+    stale = [path for path, content in installed if content != page]
+    if stale:
+        for path in stale:
+            print(f"warn stale skill: {plain(str(path))}; run: ladder install-skill", file=out)
+    elif installed:
+        print("ok   skill: installed copies match", file=out)
+    else:
+        print("ok   skill: not installed; run: ladder install-skill", file=out)
+
+
 def install_skill(out, home=None):
     home = Path.home() if home is None else Path(home)
     agents = home / ".codex" / "AGENTS.md"
     original_agents = read_existing(agents)
     section = agents_section(original_agents if original_agents is not None else b"")
     page = files("ladder").joinpath("skill/SKILL.md").read_bytes()
-    planned = [(home / folder / "skills" / "ladder" / "SKILL.md", page)
-               for folder in (".claude", ".agents")]
+    planned = [(path, page) for path in skill_paths(home)]
     planned.append((agents, section))
     for path, content in planned:
         original = original_agents if path == agents else read_existing(path)

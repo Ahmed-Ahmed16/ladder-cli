@@ -27,7 +27,9 @@ Read `ladder help` and `ladder <job> --help` for arguments.
 | --- | --- |
 | `help` | Show commands and help. |
 | `list` | Show core jobs and project tasks. |
-| `doctor` | Check tools, sign in, Python and config. |
+| `doctor` | Check tools, sign in, Python, config and installed skill copies. |
+| `log <name> [--grep RE] [--head N] [--tail N] [--max-chars N]` | Read selected log lines. |
+| `pr status [n] [--all]` | Show checks, first errors and requested reviews. |
 | `pr comments <n> [--all] [--full]` | Read unresolved review threads; include resolved threads or whole bodies. |
 | `pr wait-review <n> [--bot login] [--timeout-mins N]` | Wait for each login in `[review] wait_for` to review the newest commit; repeat `--bot` to replace the list. |
 | `gates [--dry-run]` | Run checks; dry run only prints the steps. |
@@ -44,6 +46,7 @@ In human mode, tasks and gates print `ladder: using <path>` to standard error be
 `$ ...` lines show the outside commands ladder ran.
 Gates print PASS for each passing step and FAIL for a failed step.
 Doctor prints ok or FAIL for each check, then the overall result.
+Stale skill copies get a warning; run `ladder install-skill` to update them. This warning does not fail doctor.
 Wait-review prints `<sha>: waiting for <logins>` only when status changes, then `<sha>: done: <login> (<STATE>), ...` when all finish.
 It reports head changes, polls every 30 s, and exits 1 on timeout (default 20 min) or when no reviewer is set.
 Exit 0 means success. A failed task or gate returns the step's exit code.
@@ -64,6 +67,21 @@ Read the log file for the rest of the output.
 Set `LADDER_TIMEOUT=<seconds>` to stop a step that runs too long.
 The line then says `timeout after <N>s (exit 124)`.
 `needs --yes` means ask the human first. Never add `--yes` on your own.
+
+## Common mistakes
+
+Audit of Claude calls, 2026-11-15: 46 of 103 ladder calls used output pipes.
+Labels for exec:ladder errors: permission_denied 19, file_missing 6, cmd_not_found 5, exit_nonzero 3, timeout 3.
+These are audit counts of Claude calls, not proof of causes or fixes.
+
+- Pipe output into tail, Select-Object, head, grep, sed or Select-String: agent output is already capped; the last line is the result. Use `ladder log <name> --grep RE`.
+- Wrong folder or missing file: run from the repo root with ladder.toml; use `ladder init` if it is absent. Read permission errors; do not bypass them.
+- Guess a task name: run `ladder list` to see the tasks.
+- Retry `ladder: not found`: reinstall ladder; use `python -m ladder` as a fallback.
+- Miss a failure or wait too long: read the LAST line, `ladder: FAIL ..., exit N; full log: <path>`. Set `LADDER_TIMEOUT=<seconds>` to bound each step.
+- Hand edit ladder.toml to add tasks: use `ladder add` instead.
+- Treat `ladder gates --dry-run` as a pass: it runs nothing. Run `ladder gates` to check.
+- Pass extra args to several run lines: extra args need 1 run line. Use a task with 1 run line.
 
 ## Is my PR green
 

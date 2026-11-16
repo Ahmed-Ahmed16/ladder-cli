@@ -43,6 +43,10 @@ If doctor reports `FAIL`, fix that check and run it again. A failed check exits 
 Use `ladder pr status [PR number] [--all]` for checks, first errors, and requested reviews.
 The default uses the current branch and at most 25 lines; failed checks still exit 0.
 
+Do not pipe capped output; read its last line or use `ladder log <name> --grep RE`.
+Do not hand edit ladder.toml to add tasks; use `ladder add`.
+Do not treat `ladder gates --dry-run` as a pass; it runs nothing. Run `ladder gates`.
+
 ### ladder.toml
 
 Put project tasks in `ladder.toml` at the repo root.
@@ -182,6 +186,8 @@ Unpaired, repeated or reversed markers cause an error before any file changes.
 If neither marker exists, ladder appends the section.
 Each file gets a `wrote`, `updated` or `unchanged` line.
 Unchanged files are left alone.
+`ladder doctor` warns when an installed skill page differs from the packaged page.
+Run `ladder install-skill` to update it. A stale page does not change the doctor exit code.
 
 Before writing any script, run `ladder list`. Use a task that exists.
 If a task is broken or outdated, fix its script in place. Never write a second script for the same job.

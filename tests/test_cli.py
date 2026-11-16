@@ -93,9 +93,11 @@ class CliTests(unittest.TestCase):
                 code, out, err = self.invoke(["doctor"], DOCTOR, agent=agent, mode_reason=reason)
                 self.assertEqual((code, err), (0, ""))
                 mode = "agent" if agent else "human"
-                self.assertEqual(out.splitlines()[-3:], [
-                    "ok   ladder.toml: none in this repo",
-                    f"ok   mode: {mode} ({reason})", "doctor: all checks passed"])
+                lines = out.splitlines()
+                config_line = lines.index("ok   ladder.toml: none in this repo")
+                self.assertEqual(lines[config_line + 1], f"ok   mode: {mode} ({reason})")
+                self.assertTrue(lines[config_line + 2].startswith(("ok   skill:", "warn stale skill:")))
+                self.assertEqual(lines[-1], "doctor: all checks passed")
 
     def test_human_override_reports_its_reason_without_changing_context(self):
         out, err = io.StringIO(), io.StringIO()

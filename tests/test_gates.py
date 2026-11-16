@@ -41,8 +41,12 @@ class GatesCliTests(unittest.TestCase):
             code = main(argv, Context(runner, out, err, agent=agent))
         return code, out.getvalue(), err.getvalue(), runner.steps
 
-    def test_missing_file_or_section_is_a_plain_error(self):
-        for text in (None, "", '[tasks.check]\nabout = "Check"\nrun = "check"'):
+    def test_missing_file_points_to_init(self):
+        self.assertEqual(self.invoke(None),
+                         (1, "", "ladder: no ladder.toml in this repo; run ladder init\n", []))
+
+    def test_missing_section_is_a_plain_error(self):
+        for text in ("", '[tasks.check]\nabout = "Check"\nrun = "check"'):
             with self.subTest(text=text):
                 self.assertEqual(self.invoke(text),
                                  (1, "", "ladder: no [gates] in ladder.toml\n", []))

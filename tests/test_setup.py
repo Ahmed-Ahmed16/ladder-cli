@@ -1,3 +1,4 @@
+from importlib.resources import files
 import io
 from pathlib import Path
 import tempfile
@@ -6,7 +7,8 @@ from unittest.mock import patch
 
 from ladder.cli import Context, main
 from ladder.config import load, parse
-from tests.test_cli import FakeRunner
+from ladder.setup import check_skills
+from tests.test_cli import DOCTOR, FakeRunner
 
 
 class SetupCase:
@@ -20,10 +22,10 @@ class SetupCase:
         self.child = self.repo / "child"
         self.child.mkdir()
 
-    def invoke(self, *argv, start=None):
+    def invoke(self, *argv, start=None, answers=None):
         out, err = io.StringIO(), io.StringIO()
         with patch("os.getcwd", return_value=str(start or self.child)):
-            code = main(list(argv), Context(FakeRunner(out), out, err, home=self.home))
+            code = main(list(argv), Context(FakeRunner(out, answers), out, err, home=self.home))
         return code, out.getvalue(), err.getvalue()
 
 
@@ -168,3 +170,74 @@ class InstallSkillTests(SetupCase, unittest.TestCase):
                             self.assertEqual(path.read_bytes(), b"keep page")
                         else:
                             self.assertFalse(path.exists())
+
+
+class DoctorSkillTests(SetupCase, unittest.TestCase):
+    def copies(self):
+        return (self.home / ".claude/skills/ladder/SKILL.md",
+                self.home / ".agents/skills/ladder/SKILL.md")
+
+    def assert_skill_report(self, contents, expected):
+        for path, content in zip(self.copies(), contents):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if content is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(content)
+        before = [(path.read_bytes(), path.stat().st_mtime_ns)
+                  for path in self.copies() if path.exists()]
+        code, out, err = self.invoke("doctor", answers=DOCTOR)
+        self.assertEqual((code, err), (0, ""))
+        lines = out.splitlines()
+        mode = lines.index("ok   mode: human (no agent signal)")
+        self.assertEqual(lines[mode + 1:-1], expected)
+        self.assertEqual(lines[-1], "doctor: all checks passed")
+        self.assertEqual([(path.read_bytes(), path.stat().st_mtime_ns)
+                          for path in self.copies() if path.exists()], before)
+        self.assertFalse((self.home / ".codex").exists())
+
+    def test_no_copies_reports_not_installed(self):
+        self.assert_skill_report((None, None),
+                                 ["ok   skill: not installed; run: ladder install-skill"])
+
+    def test_each_single_copy_and_both_matching_copies(self):
+        page = files("ladder").joinpath("skill/SKILL.md").read_bytes()
+        for contents in ((page, None), (None, page), (page, page)):
+            with self.subTest(installed=tuple(item is not None for item in contents)):
+                self.assert_skill_report(contents, ["ok   skill: installed copies match"])
+
+    def test_stale_copies_warn_even_when_another_copy_matches(self):
+        page = files("ladder").joinpath("skill/SKILL.md").read_bytes()
+        for contents in ((b"", None), (None, b"old"), (b"old", page),
+                         (page, b"old"), (b"old", b"old"), (page + b"\n", page)):
+            with self.subTest(contents=contents):
+                expected = [f"warn stale skill: {path}; run: ladder install-skill"
+                            for path, content in zip(self.copies(), contents)
+                            if content is not None and content != page]
+                self.assert_skill_report(contents, expected)
+
+    def test_stale_warning_does_not_change_an_existing_failure_count(self):
+        path = self.copies()[0]
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"old")
+        answers = {**DOCTOR, ("git", "--version"): (1, "broken")}
+        code, out, err = self.invoke("doctor", answers=answers)
+        self.assertEqual((code, err), (1, ""))
+        self.assertIn(f"warn stale skill: {path}; run: ladder install-skill\n", out)
+        self.assertTrue(out.endswith("doctor: 1 check(s) failed\n"))
+
+    def test_warning_uses_plain_path(self):
+        path = self.copies()[0]
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"old")
+        with patch("ladder.setup.plain", return_value="safe path") as clean:
+            code, out, err = self.invoke("doctor", answers=DOCTOR)
+        self.assertEqual((code, err), (0, ""))
+        clean.assert_called_once_with(str(path))
+        self.assertIn("warn stale skill: safe path; run: ladder install-skill\n", out)
+
+    def test_check_defaults_to_the_same_home_as_install(self):
+        out = io.StringIO()
+        with patch("ladder.setup.Path.home", return_value=self.home):
+            check_skills(out)
+        self.assertEqual(out.getvalue(), "ok   skill: not installed; run: ladder install-skill\n")

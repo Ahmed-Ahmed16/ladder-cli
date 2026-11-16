@@ -16,7 +16,7 @@ from . import config
 from .mode import agent_mode
 from .tasks import run_task
 from .gates import run_gates, warn_ci
-from .setup import init, install_skill
+from .setup import check_skills, init, install_skill
 from .add import add_task
 from .review import ReviewWait, review_logins
 
@@ -83,15 +83,24 @@ Example: ladder --human gates"""
 
 
 def arguments():
-    parser = Parser(prog="ladder", description="help | list | doctor | log | pr comments | pr wait-review | pr status | add | <task> [args]",
-                    epilog=RESULT_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = Parser(prog="ladder", epilog=RESULT_HELP,
+                    formatter_class=argparse.RawDescriptionHelpFormatter)
     jobs = parser.add_subparsers(dest="job")
     job_parsers = {name: jobs.add_parser(name, help=config.CORE_JOBS[name],
                                        allow_abbrev=name not in ("gates", "add", "log"))
                    for name in config.CORE_JOBS}
     log_arguments(job_parsers["log"], timeout_minutes)
-    pr = job_parsers["pr"]
-    commands = pr.add_subparsers(dest="command", required=True)
+    pr_commands = pr_arguments(job_parsers["pr"])
+    job_parsers["gates"].add_argument("--dry-run", action="store_true",
+                                     help="print steps without running them")
+    add_arguments(job_parsers["add"])
+    parser.description = " | ".join((*config.CORE_JOBS,
+                                     *(f"pr {name}" for name in pr_commands), "<task> [args]"))
+    return parser
+
+
+def pr_arguments(parser):
+    commands = parser.add_subparsers(dest="command", required=True)
     comments = commands.add_parser("comments", help="show review threads")
     comments.add_argument("number", type=pr_number, metavar="PR number")
     comments.add_argument("--all", action="store_true", help="include resolved threads")
@@ -105,15 +114,15 @@ def arguments():
                       help="replace configured reviewers; may be repeated")
     wait.add_argument("--timeout-mins", type=timeout_minutes, default=20, metavar="N",
                       help="whole number >= 1 (default: 20)")
-    gates = job_parsers["gates"]
-    gates.add_argument("--dry-run", action="store_true", help="print steps without running them")
-    add = job_parsers["add"]
-    add.add_argument("name", help="letters, digits, - and _ only")
-    add.add_argument("--about", required=True, help="describe the task")
-    add.add_argument("--run", required=True, action="append", help="command to run; may be repeated")
-    add.add_argument("--shell", choices=("bash",), help="use bash for shell features")
-    add.add_argument("--confirm", action="store_true", help="require --yes to run this task")
-    return parser
+    return commands.choices
+
+
+def add_arguments(parser):
+    parser.add_argument("name", help="letters, digits, - and _ only")
+    parser.add_argument("--about", required=True, help="describe the task")
+    parser.add_argument("--run", required=True, action="append", help="command to run; may be repeated")
+    parser.add_argument("--shell", choices=("bash",), help="use bash for shell features")
+    parser.add_argument("--confirm", action="store_true", help="require --yes to run this task")
 
 
 def check_version(runner, program):
@@ -168,6 +177,7 @@ def doctor(context):
     failed += code != 0
     print(f"{'FAIL' if code else 'ok  '} ladder.toml: {plain(label)}", file=out)
     print(f"ok   mode: {'agent' if context.agent else 'human'} ({context.mode_reason})", file=out)
+    check_skills(out, context.home)
     print(f"doctor: {failed} check(s) failed" if failed else "doctor: all checks passed", file=out)
     return int(failed != 0)
 
@@ -199,7 +209,9 @@ def pr_job(args, context):
 
 def gates_job(args, context):
     project = context.project()
-    if project is None or not project.gates:
+    if project is None:
+        raise LadderError("no ladder.toml in this repo; run ladder init")
+    if not project.gates:
         raise LadderError("no [gates] in ladder.toml")
     if not context.agent:
         print(f"ladder: using {plain(project.path)}", file=context.err, flush=True)
