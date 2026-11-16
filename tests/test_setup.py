@@ -77,8 +77,6 @@ class InstallSkillTests(SetupCase, unittest.TestCase):
                 self.home / ".codex/AGENTS.md"]
 
     def test_install_writes_packaged_page_and_rerun_changes_nothing(self):
-        from importlib.resources import files
-
         code, out, err = self.invoke("install-skill")
         self.assertEqual((code, err), (0, ""))
         paths = self.targets()
@@ -226,15 +224,16 @@ class DoctorSkillTests(SetupCase, unittest.TestCase):
         self.assertIn(f"warn stale skill: {path}; run: ladder install-skill\n", out)
         self.assertTrue(out.endswith("doctor: 1 check(s) failed\n"))
 
-    def test_warning_uses_plain_path(self):
+    def test_stale_warning_prints_a_path_with_runs_of_spaces_collapsed(self):
+        self.home = self.root / "my   home"
         path = self.copies()[0]
         path.parent.mkdir(parents=True)
         path.write_bytes(b"old")
-        with patch("ladder.setup.plain", return_value="safe path") as clean:
-            code, out, err = self.invoke("doctor", answers=DOCTOR)
+        code, out, err = self.invoke("doctor", answers=DOCTOR)
         self.assertEqual((code, err), (0, ""))
-        clean.assert_called_once_with(str(path))
-        self.assertIn("warn stale skill: safe path; run: ladder install-skill\n", out)
+        collapsed = " ".join(str(path).split())
+        self.assertNotEqual(collapsed, str(path))
+        self.assertIn(f"warn stale skill: {collapsed}; run: ladder install-skill\n", out)
 
     def test_check_defaults_to_the_same_home_as_install(self):
         out = io.StringIO()

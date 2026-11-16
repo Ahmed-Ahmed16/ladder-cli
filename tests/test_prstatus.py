@@ -90,7 +90,7 @@ class PRStatusTests(unittest.TestCase):
                 self.assertEqual(lines[1], "green: unknown; checks: 0 failed, 0 passed, 1 pending")
         self.assertIn("green: unknown", self.invoke(changes={"statusCheckRollup": {}})[1][1])
 
-    def test_each_checkrun_conclusion(self):
+    def test_only_success_neutral_and_skipped_checkruns_count_as_green(self):
         for conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE",
                            "SUCCESS", "NEUTRAL", "SKIPPED"):
             with self.subTest(conclusion=conclusion):
@@ -100,7 +100,7 @@ class PRStatusTests(unittest.TestCase):
                 self.assertEqual((code, err), (0, ""))
                 self.assertIn("green: " + expected, lines[1])
 
-    def test_status_context_states(self):
+    def test_status_context_failure_lists_a_failed_check_with_unknown_run(self):
         for state, green in (("SUCCESS", "yes"), ("FAILURE", "no"), ("ERROR", "no"),
                              ("PENDING", "unknown"), ("OTHER", "unknown")):
             with self.subTest(state=state):
@@ -112,16 +112,20 @@ class PRStatusTests(unittest.TestCase):
                     self.assertIn("FAIL external (run unknown)", lines)
                     self.assertIn("  log not available", lines)
 
-    def test_log_caps_and_all(self):
+    def test_long_failed_log_is_cut_to_10_lines_with_a_marker(self):
         code, lines, _, _ = self.invoke("pr-one-failed")
         self.assertEqual(code, 0)
         self.assertIn("  first error: ERROR-synthetic-unit-failed", lines)
         self.assertIn("  showing 10 of 200 log lines, add --all", lines)
         self.assertNotIn("  synthetic log line 2", lines)
+
+    def test_all_flag_raises_the_log_cut_to_100_lines(self):
         _, lines, _, _ = self.invoke("pr-one-failed", flags=("--all",))
         self.assertIn("  showing 100 of 200 log lines, add --all", lines)
         self.assertIn("  synthetic log line 102", lines)
         self.assertNotIn("  synthetic log line 103", lines)
+
+    def test_short_log_prints_no_cut_marker(self):
         _, lines, _, _ = self.invoke("pr-one-failed", flags=("--all",), log=(0, "ERROR\nlast\n"))
         self.assertNotIn("showing", "\n".join(lines))
 
