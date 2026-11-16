@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from ladder.cli import Context, main
 from ladder.logread import read_log
@@ -30,9 +30,10 @@ class LogReadTests(unittest.TestCase):
 
     def invoke(self, *argv):
         out, err = io.StringIO(), io.StringIO()
-        project = Mock(side_effect=AssertionError("log must not read project config"))
-        code = main(["log", *map(str, argv)], Context(None, out, err, load_config=project))
-        project.assert_not_called()
+        def no_project(_):
+            raise AssertionError("log must not read project config")
+
+        code = main(["log", *map(str, argv)], Context(None, out, err, load_config=no_project))
         return code, out.getvalue().splitlines(), err.getvalue()
 
     def test_grep_finds_line_150_in_300_lines(self):
@@ -75,17 +76,17 @@ class LogReadTests(unittest.TestCase):
         self.assertEqual(lines, [f"showing 40 of 300 lines in {self.path.name}",
                                  *[f"line-{n}" for n in range(222, 301, 2)]])
 
-    def test_max_chars_cuts_at_a_line_end_and_counts_printed_lines(self):
-        path = self.write_log("short.log", "alpha\nbravo\ncharlie\n")
-        code, lines, err = self.invoke(path, "--head", "3", "--max-chars", "9")
-        self.assertEqual((code, err), (0, ""))
-        self.assertEqual(lines, ["showing 1 of 3 lines in short.log", "alpha", "(cut at 9 chars)"])
-
-    def test_max_chars_can_cut_the_first_line(self):
-        path = self.write_log("short.log", "abcdef\n")
-        code, lines, err = self.invoke(path, "--max-chars", "1")
-        self.assertEqual((code, err), (0, ""))
-        self.assertEqual(lines, ["showing 1 of 1 lines in short.log", "a", "(cut at 1 chars)"])
+    def test_max_chars_cuts_at_a_line_end_or_inside_the_first_line(self):
+        for text, options, expected in (
+                ("alpha\nbravo\ncharlie\n", ("--head", "3", "--max-chars", "9"),
+                 ["showing 1 of 3 lines in short.log", "alpha", "(cut at 9 chars)"]),
+                ("abcdef\n", ("--max-chars", "1"),
+                 ["showing 1 of 1 lines in short.log", "a", "(cut at 1 chars)"])):
+            with self.subTest(options=options):
+                path = self.write_log("short.log", text)
+                code, lines, err = self.invoke(path, *options)
+                self.assertEqual((code, err), (0, ""))
+                self.assertEqual(lines, expected)
 
     def test_default_character_cap_is_4000(self):
         path = self.write_log("wide.log", ("x" * 100 + "\n") * 40)
