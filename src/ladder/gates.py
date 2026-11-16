@@ -19,13 +19,13 @@ def warn_ci(project, err):
             print(f"warning: gate step {step} not found in {plain(ci)}: {redact(line)}", file=err)
 
 
-def run_gates(args, project, runner, out):
+def run_gates(args, project, runner, out, agent=False):
     lines = project.gates["run"]
     if args.dry_run:
         for step, line in enumerate(lines, 1):
             print(f"{step}: {redact(line)}", file=out)
         return 0
-    with logged(runner, out, "gates") as (tee, path):
+    with logged(runner, out, "gates", agent=agent) as (tee, path):
         for step, line in enumerate(lines, 1):
             label = f"step {step} of {len(lines)}: {redact(line)}"
             try:

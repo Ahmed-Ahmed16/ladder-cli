@@ -70,9 +70,16 @@ The line then says `timeout after <N>s (exit 124)`.
 Agent mode is on when `CLAUDECODE` is non-empty and stdout is not a terminal.
 Set `LADDER_AGENT=0` or put `--human` first for full human output.
 Set `LADDER_AGENT=1` to force agent mode.
-For now, agent mode only drops the `ladder: using <path>` line, including dry runs.
+Agent mode drops the `ladder: using <path>` line, including dry runs.
 `ladder doctor` shows the mode and the config path.
 Example: `ladder doctor` prints `ok   mode: agent (CLAUDECODE set, no TTY)`.
+
+### Output cap
+
+In agent mode, tasks and gates show the first 10 and last 30 output lines.
+If output exceeds 40 lines, a `showing 40 of M lines (N cut); full log: <path>` line separates them.
+The full log keeps all output. With 40 lines or fewer, all lines show without a cut line.
+The summary stays last. Use `ladder --human` or `LADDER_AGENT=0` to show all lines.
 
 Minimal ladder.toml:
 

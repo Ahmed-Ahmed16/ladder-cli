@@ -70,6 +70,8 @@ Agent mode is on when CLAUDECODE is non-empty and stdout is not a terminal.
 LADDER_AGENT=1 forces agent mode.
 LADDER_AGENT=0 or a leading --human forces the full human output.
 Agent mode does not print the ladder: using <path> line.
+Agent mode shows the first 10 and last 30 task/gates lines, plus showing 40 of M lines.
+That line names the full log; ladder --human or LADDER_AGENT=0 shows all lines.
 ladder doctor shows the mode and the config path.
 Example: ladder --human gates"""
 
@@ -190,7 +192,7 @@ def gates_job(args, context):
     if not context.agent:
         print(f"ladder: using {plain(project.path)}", file=context.err, flush=True)
     warn_ci(project, context.err)
-    return run_gates(args, project, context.runner, context.out)
+    return run_gates(args, project, context.runner, context.out, agent=context.agent)
 
 
 def init_job(args, context):
@@ -227,7 +229,7 @@ def main(argv, context) -> int:
             context = replace(context, agent=False, mode_reason="--human")
         if argv and argv[0] not in (*config.CORE_JOBS, "-h", "--help"):
             return run_task(context.project(), argv, context.runner, context.out, context.err,
-                            announce=not context.agent)
+                            announce=not context.agent, agent=context.agent)
         parser = arguments()
         with redirect_stdout(context.out):
             args = parser.parse_args(argv)

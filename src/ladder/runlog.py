@@ -6,6 +6,7 @@ import stat
 import tempfile
 import time
 
+from .cap import Capped
 from .process import LadderError, redact
 
 
@@ -25,9 +26,10 @@ def create_log(path):
 
 
 class Tee:
-    def __init__(self, out, log):
+    def __init__(self, out, log, path=None):
         self.out = out
         self.log = log
+        self.path = path
         self.line_start = True
 
     def write(self, text):
@@ -37,6 +39,10 @@ class Tee:
             self.line_start = text.endswith("\n")
         return len(text)
 
+    def finish(self):
+        if isinstance(self.out, Capped):
+            self.out.finish(self.path)
+
     def flush(self):
         self.out.flush()
         self.log.flush()
@@ -45,11 +51,11 @@ class Tee:
 def summary(tee, message):
     if not tee.line_start:
         print(file=tee)
+    tee.finish()
     print(message, file=tee, flush=True)
 
 
-@contextmanager
-def logged(runner, out, name):
+def open_log(name):
     directory = private_folder()
     name = re.sub(r"[^\w.-]", "_", name)
     stem = f"{name}-{time.strftime('%Y%m%d-%H%M%S')}"
@@ -59,14 +65,20 @@ def logged(runner, out, name):
         path = directory / f"{stem}{suffix}.log"
         try:
             log = create_log(path)
-            break
+            return log, path
         except FileExistsError:
             number += 1
+
+
+@contextmanager
+def logged(runner, out, name, agent=False):
+    log, path = open_log(name)
     with log:
-        tee = Tee(out, log)
+        tee = Tee(Capped(out) if agent else out, log, path)
         previous = runner.out
         runner.out = tee
         try:
             yield tee, path
         finally:
             runner.out = previous
+            tee.finish()

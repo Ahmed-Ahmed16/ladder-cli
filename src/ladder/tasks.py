@@ -21,15 +21,20 @@ def checked_args(task, name, extra):
     return extra
 
 
-def run_task(config, argv, runner, out, err, *, announce=True):
-    name, *extra = argv
+def named_task(config, name):
     task = config.tasks.get(name) if config is not None else None
     if task is None:
         raise LadderError(f'unknown job or task "{name}"; run ladder list')
+    return task
+
+
+def run_task(config, argv, runner, out, err, *, announce=True, agent=False):
+    name, *extra = argv
+    task = named_task(config, name)
     extra = checked_args(task, name, extra)
     if announce:
         print(f"ladder: using {plain(config.path)}", file=err, flush=True)
-    with logged(runner, out, name) as (tee, path):
+    with logged(runner, out, name, agent=agent) as (tee, path):
         total = len(task.run)
         for step, line in enumerate(task.run, 1):
             label = f"ladder: FAIL {plain(name)}, step {step} of {total}"

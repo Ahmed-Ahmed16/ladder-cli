@@ -101,7 +101,7 @@ FAIL step 2 of 3: python -m unittest (exit 2); full log: /tmp/ladder/logs/gates-
 gates: all 3 passed; full log: /tmp/ladder/logs/gates-20261115-101700.log
 ```
 
-The log holds the same text as the screen, after secrets are redacted.
+The log holds all output, after secrets are redacted.
 On Linux and macOS the log folder must be a real folder that you own and nobody else can open,
 and each log file is created for you alone. Ladder refuses a link or a shared folder with an error.
 Set `LADDER_TIMEOUT=<seconds>` to stop any step that runs longer. The summary then says
@@ -115,11 +115,13 @@ fails the task. A task that pipes into `head` can now fail with exit 141 when th
 Agent mode is on when `CLAUDECODE` is non-empty and stdout is not a terminal.
 Set `LADDER_AGENT=0` or put `--human` first for full human output.
 Set `LADDER_AGENT=1` to force agent mode.
-For now, agent mode only drops the `ladder: using <path>` line, including dry runs.
+Agent mode drops the `ladder: using <path>` line, including dry runs.
 `ladder doctor` shows the mode and the config path.
 Example: `ladder doctor` prints `ok   mode: agent (CLAUDECODE set, no TTY)`.
 
 Use `ladder --human gates` to show the full human output for 1 run.
+Tasks and gates show the first 10 and last 30 lines in agent mode; 40 lines or fewer show in full.
+A `showing 40 of M lines (N cut); full log: <path>` line marks the cut; `LADDER_AGENT=0` also shows all lines.
 
 ### Wait for reviews
 
