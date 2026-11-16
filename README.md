@@ -25,6 +25,7 @@ Commands:
 ladder help
 ladder list
 ladder doctor
+ladder pr status
 ladder pr comments 82
 ladder pr wait-review 82
 ladder gates --dry-run
@@ -38,6 +39,9 @@ Add `--all` to include resolved threads. Add `--full` for whole comment bodies.
 The default shows the first 3 plain lines of each comment.
 `python -m ladder` accepts the same arguments.
 If doctor reports `FAIL`, fix that check and run it again. A failed check exits 1.
+
+Use `ladder pr status [PR number] [--all]` for checks, first errors, and requested reviews.
+The default uses the current branch and at most 25 lines; failed checks still exit 0.
 
 ### ladder.toml
 

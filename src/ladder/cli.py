@@ -10,6 +10,7 @@ from typing import Callable, TextIO
 
 from .process import LadderError, Runner, plain, redact
 from .pr import comments
+from .prstatus import status
 from .logread import add_arguments as log_arguments, log_job
 from . import config
 from .mode import agent_mode
@@ -67,6 +68,7 @@ The last line is the result. Do not pipe ladder into tail or head.
 ladder log <log> selects lines by regex, then --head N or --tail N (default: last 40).
 ladder log accepts a private log path or name; --max-chars N caps log text (default: 4000).
 Example: ladder log gates --grep FAIL
+Example: ladder pr status (checks, first errors, and requested reviews)
 LADDER_TIMEOUT=<seconds> stops a step that runs too long (exit 124).
 Tasks with shell = "bash" run with pipefail.
 
@@ -81,7 +83,7 @@ Example: ladder --human gates"""
 
 
 def arguments():
-    parser = Parser(prog="ladder", description="help | list | doctor | log | pr comments | pr wait-review | add | <task> [args]",
+    parser = Parser(prog="ladder", description="help | list | doctor | log | pr comments | pr wait-review | pr status | add | <task> [args]",
                     epilog=RESULT_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     jobs = parser.add_subparsers(dest="job")
     job_parsers = {name: jobs.add_parser(name, help=config.CORE_JOBS[name],
@@ -94,6 +96,9 @@ def arguments():
     comments.add_argument("number", type=pr_number, metavar="PR number")
     comments.add_argument("--all", action="store_true", help="include resolved threads")
     comments.add_argument("--full", action="store_true", help="keep whole comment bodies")
+    status = commands.add_parser("status", help="show checks, first errors, and reviews", allow_abbrev=False)
+    status.add_argument("number", nargs="?", type=pr_number, metavar="PR number")
+    status.add_argument("--all", action="store_true", help="show all failures and up to 100 log lines each")
     wait = commands.add_parser("wait-review", help="wait for reviews of the newest commit", allow_abbrev=False)
     wait.add_argument("number", type=pr_number, metavar="PR number")
     wait.add_argument("--bot", action="append", type=reviewer_login, metavar="LOGIN",
@@ -184,6 +189,8 @@ def list_job(args, context):
 def pr_job(args, context):
     if args.command == "comments":
         comments(args, context.runner, context.out)
+    elif args.command == "status":
+        status(args, context.runner, context.out)
     else:
         args.reviewers = review_logins(context.project(), args.bot)
         ReviewWait(context.clock, context.sleep).wait(args, context.runner, context.out)
