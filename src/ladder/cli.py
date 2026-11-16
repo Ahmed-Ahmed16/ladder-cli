@@ -10,6 +10,7 @@ from typing import Callable, TextIO
 
 from .process import LadderError, Runner, plain, redact
 from .pr import comments
+from .logread import add_arguments as log_arguments, log_job
 from . import config
 from .mode import agent_mode
 from .tasks import run_task
@@ -63,6 +64,9 @@ def reviewer_login(text):
 RESULT_HELP = """Tasks and gates write the full output to a log file and end with a summary line that names it:
   ladder: FAIL test, step 1 of 1, exit 3; full log: <path>
 The last line is the result. Do not pipe ladder into tail or head.
+ladder log <log> selects lines by regex, then --head N or --tail N (default: last 40).
+ladder log accepts a private log path or name; --max-chars N caps log text (default: 4000).
+Example: ladder log gates --grep FAIL
 LADDER_TIMEOUT=<seconds> stops a step that runs too long (exit 124).
 Tasks with shell = "bash" run with pipefail.
 
@@ -77,12 +81,13 @@ Example: ladder --human gates"""
 
 
 def arguments():
-    parser = Parser(prog="ladder", description="help | list | doctor | pr comments | pr wait-review | add | <task> [args]",
+    parser = Parser(prog="ladder", description="help | list | doctor | log | pr comments | pr wait-review | add | <task> [args]",
                     epilog=RESULT_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
     jobs = parser.add_subparsers(dest="job")
     job_parsers = {name: jobs.add_parser(name, help=config.CORE_JOBS[name],
-                                       allow_abbrev=name not in ("gates", "add"))
+                                       allow_abbrev=name not in ("gates", "add", "log"))
                    for name in config.CORE_JOBS}
+    log_arguments(job_parsers["log"], timeout_minutes)
     pr = job_parsers["pr"]
     commands = pr.add_subparsers(dest="command", required=True)
     comments = commands.add_parser("comments", help="show review threads")
@@ -216,6 +221,7 @@ JOBS = {
     "doctor": doctor_job,
     "pr": pr_job,
     "gates": gates_job,
+    "log": log_job,
     "add": add_job,
     "init": init_job,
     "install-skill": install_skill_job,

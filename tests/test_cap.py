@@ -46,7 +46,7 @@ class CappedTests(unittest.TestCase):
         cap.finish("run.log")
         self.assertEqual(out.getvalue(), "".join([
             *lines[:10],
-            "showing 40 of 300 lines (260 cut); full log: run.log\n",
+            "showing 40 of 300 lines (260 cut); full log: run.log; read more: ladder log run.log --grep RE\n",
             *lines[-30:]]))
 
     def test_partial_last_line_counts_as_a_line(self):
@@ -61,7 +61,7 @@ class CappedTests(unittest.TestCase):
                 if count > 40:
                     expected = "".join([
                         *lines[:10],
-                        f"showing 40 of {count} lines ({count - 40} cut); full log: run.log\n",
+                        f"showing 40 of {count} lines ({count - 40} cut); full log: run.log; read more: ladder log run.log --grep RE\n",
                         *lines[-30:]])
                 self.assertEqual(out.getvalue(), expected)
 
@@ -142,7 +142,7 @@ class CappedRunTests(unittest.TestCase):
         self.assertLessEqual(len(lines), 45)
         summary = f"ladder: ok check, 1 step; full log: {path}"
         self.assertEqual(lines, ["$ check", *[f"line {n}" for n in range(1, 10)],
-                                f"showing 40 of 301 lines (261 cut); full log: {path}",
+                                f"showing 40 of 301 lines (261 cut); full log: {path}; read more: ladder log {path} --grep RE",
                                 *[f"line {n}" for n in range(271, 301)], summary])
         self.assertEqual(path.read_text(encoding="utf-8"),
                          "$ check\n" + "".join(numbered(300)) + summary + "\n")
@@ -170,7 +170,7 @@ class CappedRunTests(unittest.TestCase):
         status, lines, path = self.invoke(True, gates=True)
         self.assertEqual(status, 0)
         self.assertLessEqual(len(lines), 45)
-        self.assertEqual(lines[10], f"showing 40 of 302 lines (262 cut); full log: {path}")
+        self.assertEqual(lines[10], f"showing 40 of 302 lines (262 cut); full log: {path}; read more: ladder log {path} --grep RE")
         self.assertEqual(lines[-2:], ["PASS step 1 of 1: check",
                                      f"gates: all 1 passed; full log: {path}"])
         self.assertEqual(path.read_text(encoding="utf-8"),
@@ -209,7 +209,7 @@ class CappedRunTests(unittest.TestCase):
                 tee.write("".join(numbered(300)).rstrip("\n"))
                 raise RuntimeError("broken")
         self.assertIs(runner.out, out)
-        self.assertIn(f"showing 40 of 300 lines (260 cut); full log: {path}\n", out.getvalue())
+        self.assertIn(f"showing 40 of 300 lines (260 cut); full log: {path}; read more: ladder log {path} --grep RE\n", out.getvalue())
         self.assertTrue(out.getvalue().endswith("line 300\n"))
         self.assertEqual(path.read_text(encoding="utf-8"), "".join(numbered(300)).rstrip("\n"))
 

@@ -101,6 +101,9 @@ FAIL step 2 of 3: python -m unittest (exit 2); full log: /tmp/ladder/logs/gates-
 gates: all 3 passed; full log: /tmp/ladder/logs/gates-20261115-101700.log
 ```
 
+Read a log with `ladder log gates --grep FAIL`, or pass the full path from the summary.
+Use `--head N` or `--tail N`; the default shows the last 40 lines or regex matches.
+Each line has at most 300 characters; `--max-chars N` caps log text (default: 4000).
 The log holds all output, after secrets are redacted.
 On Linux and macOS the log folder must be a real folder that you own and nobody else can open,
 and each log file is created for you alone. Ladder refuses a link or a shared folder with an error.

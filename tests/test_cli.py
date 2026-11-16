@@ -71,7 +71,7 @@ class CliTests(unittest.TestCase):
             with self.subTest(argv=argv):
                 code, out, err = self.invoke(argv)
                 self.assertEqual((code, err), (0, ""))
-                for command in ("help", "list", "doctor", "pr comments", "<task> [args]"):
+                for command in ("help", "list", "doctor", "log", "pr comments", "<task> [args]"):
                     self.assertIn(command, out)
 
     def test_help_teaches_agent_mode_and_human_override(self):
@@ -127,6 +127,15 @@ class CliTests(unittest.TestCase):
                 code = main(argv, Context(FakeRunner(out, {COMMAND: THREADS}), out, err,
                                          load_config=broken_config))
                 self.assertEqual((code, err.getvalue()), (0, ""))
+
+    def test_log_help_and_example_need_no_config(self):
+        code, out, err = self.invoke(["log", "--help"])
+        self.assertEqual((code, err), (0, ""))
+        for option in ("--grep RE", "--head N", "--tail N", "--max-chars N"):
+            self.assertIn(option, out)
+        code, out, err = self.invoke(["help"])
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn("ladder log gates --grep FAIL", out)
 
     def test_setup_commands_have_help_without_config_or_writes(self):
         for name in ("init", "install-skill"):

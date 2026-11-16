@@ -35,7 +35,8 @@ class Capped:
             self._line(self.partial + "\n")
             self.partial = ""
         if self.total > 40:
-            print(f"showing 40 of {self.total} lines ({self.total - 40} cut); full log: {log_path}",
+            print(f"showing 40 of {self.total} lines ({self.total - 40} cut); full log: {log_path}; "
+                  f"read more: ladder log {log_path} --grep RE",
                   file=self.out)
         for line in self.tail:
             self.out.write(line)

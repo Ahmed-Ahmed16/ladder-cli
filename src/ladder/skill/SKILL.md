@@ -65,6 +65,17 @@ Set `LADDER_TIMEOUT=<seconds>` to stop a step that runs too long.
 The line then says `timeout after <N>s (exit 124)`.
 `needs --yes` means ask the human first. Never add `--yes` on your own.
 
+## Reading a log
+
+Run `ladder log gates --grep FAIL` to read the newest gates log.
+Pass a task name, a file name, or the full log path from the summary.
+Ladder reads regular `.log` files only from its private log folder and rejects file links.
+It selects regex matches first, then the first `--head N` or last `--tail N` lines.
+The default is the last 40 lines or matches. Do not combine `--head` and `--tail`.
+Each line has at most 300 characters. `--max-chars N` caps log text at 4000 by default.
+The header and cut marker are extra. No regex matches exits 1; a match exits 0.
+Numbers must be whole numbers >= 1. Secrets stay redacted.
+
 ## Agent mode
 
 Agent mode is on when `CLAUDECODE` is non-empty and stdout is not a terminal.

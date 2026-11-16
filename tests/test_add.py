@@ -72,7 +72,7 @@ class AddCliTests(SetupCase, unittest.TestCase):
                 self.assertEqual(self.path.read_bytes(), original)
 
     def test_core_names_refuse_without_creating_a_file(self):
-        for name in ("help", "list", "doctor", "pr", "gates", "add", "init", "install-skill"):
+        for name in ("help", "list", "doctor", "pr", "gates", "log", "add", "init", "install-skill"):
             with self.subTest(name=name):
                 code, out, err = self.invoke("add", name, "--about", "Check", "--run", "check")
                 self.assertEqual((code, out), (1, ""))
