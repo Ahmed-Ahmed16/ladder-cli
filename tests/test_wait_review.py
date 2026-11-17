@@ -46,7 +46,6 @@ class WaitReviewTests(unittest.TestCase):
         return code, lines, err.getvalue(), runner.commands, timer.sleeps
 
     def test_no_reviewer_stops_without_commands_or_sleep(self):
-        # Cases: no file, no section, no key, explicitly empty list.
         for config in (None, "", "[review]", "[review]\nwait_for = []"):
             with self.subTest(config=config):
                 self.assertEqual(self.invoke(config=config),
@@ -183,7 +182,6 @@ class WaitReviewTests(unittest.TestCase):
                 self.assertEqual(commands, [list(HEAD_COMMAND)])
 
     def test_timeout_and_bot_arguments_are_validated_before_commands(self):
-        # Cases: minimum, zero, negative, fractional, non numeric, blank and overflow text.
         for setting in ("0", "-1", "1.5", "no", "", "9" * 5000):
             with self.subTest(setting=setting):
                 code, lines, err, commands, sleeps = self.invoke(flags=("--timeout-mins", setting))

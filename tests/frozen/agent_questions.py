@@ -11,7 +11,6 @@ import re
 
 @cache
 def load_contract():
-    """Read the contract beside this module; never change it."""
     return json.loads(Path(__file__).with_name("contracts.json").read_text(encoding="utf-8"))
 
 
@@ -24,7 +23,7 @@ def _question(question_id):
 
 
 def build_prompt(question_id, task_id=None):
-    """Resolve shared prompts and require a frozen task id for B5."""
+    """Return the prompt. Raise ValueError when task_id is missing for tasks_b5 or set for any other question."""
     question = _question(question_id)
     if question_id == "tasks_b5":
         tasks = {task["id"]: task for task in question["tasks"]}
@@ -174,7 +173,6 @@ def _score_keys(question_id):
 
 
 def run_passes(question_ids_scores, false_green=False, false_success=False):
-    """Require nonempty, complete frozen scores and strictly false flags."""
     if false_green is not False or false_success is not False:
         return False
     if not isinstance(question_ids_scores, dict) or not question_ids_scores:
@@ -200,14 +198,7 @@ def _build_id(build_row):
 
 
 def arm_verdict(build_row, runs):
-    """Check exactly 3 aggregate runs for a row id, frozen row or id dict.
-
-    Each run has answers, tool_calls, piped_calls and false_green. answers maps
-    question ids to score dicts; B4 uses all 6 state ids and B5 both task ids.
-    B4 also needs ladder_calls_by_state with exactly 1 call for each state.
-    Optional false_success
-    must be false. B6b returns None because its contract has no pass minimum.
-    """
+    """Return True when exactly 3 runs match the frozen row, else False. Return None for B6b, which has no pass minimum."""
     build_id = _build_id(build_row)
     if build_id == "B6b":
         return None
@@ -243,9 +234,6 @@ def arm_verdict(build_row, runs):
 
 
 def session_plan(build_row):
-    """Return fresh sessions per arm: B1/2/3=3, B4=18, B5=6; B6b=None.
-
-    Each prompt gets a session per repetition; JSON keys share that session.
-    """
+    """Each prompt gets a session per repetition; JSON keys share that session."""
     build_id = _build_id(build_row)
     return {"B1": 3, "B2": 3, "B3a_B3b": 3, "B4": 18, "B5": 6, "B6b": None}[build_id]

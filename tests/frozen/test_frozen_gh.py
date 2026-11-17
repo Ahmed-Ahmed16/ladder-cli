@@ -1,4 +1,3 @@
-"""Check the local gh stub and the six frozen PR states."""
 
 import json
 import os

@@ -27,7 +27,7 @@ def last_line_class(line):
 
 
 def extract_log_path(lines):
-    """Find an existing .log file in the last 3 nonempty lines."""
+    """Return the existing .log path named in the last 3 nonempty lines, or None."""
     for line in reversed(_nonempty(lines)[-3:]):
         for end in reversed(list(re.finditer(r"\.log(?=$|[\s\"'`),;\]])", line, re.I))):
             prefix = line[:end.end()]
@@ -69,7 +69,6 @@ def _exit_matches(expected, exit_code):
 
 
 def score_replay_case(spec, result):
-    """Check every replay observable."""
     lines = _nonempty(result.lines)
     last3 = lines[-3:]
     checks = {
@@ -115,7 +114,6 @@ def expected_mode(cell):
 
 
 def score_matrix_cell(cell, doctor_result, dryrun_result):
-    """Score mode selection for both injected terminals and real pipes."""
     cell_id = cell.get("id", ",".join(key + "=" + cell[key] for key in ("tty", "claudecode", "override")))
     mode = expected_mode(cell)
     checks = {
@@ -164,7 +162,6 @@ def score_b3(spec, result, log_result=None):
 
 
 def score_pr_state(state_id, spec, result):
-    """Use the frozen PR truth to detect missing failure evidence."""
     output = "\n".join(result.lines).lower()
     failed_check = _PR_FAILED_CHECKS.get(state_id)
     false_success = not result.timed_out and result.exit_code == 0 and (
@@ -185,7 +182,7 @@ def score_pr_state(state_id, spec, result):
 
 
 def build_verdict(scores):
-    """Count every score. Only unavailable TTY cells may be unrun on a pass."""
+    """A pass allows NOT_RUN scores only when their reason is no_pty."""
     scores = list(scores.values() if isinstance(scores, dict) else scores)
     passed = sum(score["status"] == "PASS" for score in scores)
     failed = sum(score["status"] == "FAIL" for score in scores)

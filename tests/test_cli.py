@@ -308,7 +308,6 @@ class CliTests(unittest.TestCase):
                 self.assertNotIn(secret, out + err)
 
     def test_comments_strip_hidden_controls_and_preserve_visible_unicode(self):
-        # Cases: terminal controls and bidi marks; ordinary accents and Arabic.
         cases = [('\x1b[31mRed\x9b CSI \u202ebidi \u2066isolate\nNext\tline',
                   '[31mRed CSI bidi isolate\nNext\tline'),
                  ('caf\u00e9 na\u00efve\n\u0645\u0631\u062d\u0628\u0627',

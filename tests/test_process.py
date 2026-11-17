@@ -63,7 +63,6 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(str(raised.exception), "./runner.exe: not found")
 
     def test_current_folder_program_is_not_found_through_unsafe_path_entries(self):
-        # Cases: empty, dot, relative, and an absolute PATH folder without the program.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             program = root / 'ladder-test-tool.exe'
@@ -145,7 +144,6 @@ class BashRunnerTests(unittest.TestCase):
     def test_bad_override_never_falls_back_to_path(self):
         bash = self.program("bin/bash.exe" if os.name == "nt" else "bin/bash")
         self.on_path(bash.parent)
-        # Cases: missing file, directory, explicitly set empty string.
         for override in (str(self.root / "missing.exe"), str(bash.parent), ""):
             with self.subTest(override=override):
                 os.environ["LADDER_BASH"] = override
@@ -154,7 +152,7 @@ class BashRunnerTests(unittest.TestCase):
                 self.assertIn("LADDER_BASH", str(raised.exception))
 
     def test_windows_prefers_git_bash_for_each_git_layout(self):
-        # Regression: System32 bash starts WSL instead of the project's tools.
+        # Windows System32 bash.exe starts WSL, not the project's bash.
         wsl = self.program("Windows/System32/bash.exe")
         for layout in ("cmd", "bin", "mingw64/bin"):
             with self.subTest(layout=layout), patch("ladder.process.WINDOWS", True):
