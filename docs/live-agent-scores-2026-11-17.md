@@ -3,6 +3,12 @@
 Harness: `tests/live/run_live.py` (`python -m tests.live.run_live b3|b3noskill|b4|b5`). Counts and labels only. Transcripts stay outside git in `D:\Ahmed-yzh\ladder-live-runs-2026-11-17`.
 Build under test: `ladder` on PATH, reinstalled from 2f2ad6d. Prompts, answer keys and scoring come from `tests/frozen` (`agent_questions.py`, `contracts.json`), unchanged.
 
+## Decisions of 2026-11-17 (Ahmed), after the first runs
+
+- B3 verdict: PASS. Rule: the Skill load does not count as a call, because a real session loads the skill once. Counted calls are shell calls: 2 in each of 3 runs, 0 pipes.
+- B4: the first runs failed on `pr-api-error` (2 ladder calls). Fix: `ladder pr status` now prints a second error line, "a retry now gives the same result; try later and answer unknown". The `pr-api-error` state ran again, 3 live runs, same harness: 1 ladder call in each run (2 tool calls with the Skill load), answers right (`unknown` for all keys), 0 false green, 0 pipes. B4 verdict: PASS for the 6 states, with the first 5 states from the first runs and `pr-api-error` from the rerun. Rerun cost $0.0992, 102,991 tokens, 3 sessions.
+- The reinstalled `ladder` on PATH has the fix. The installed skill copy in `~/.claude/skills/ladder` was not updated (the session may not edit `~/.claude`), so it still says "1 error line". Run `ladder install-skill` to refresh it.
+
 ## Method
 
 - One fresh `claude -p` session per question per run. Model `claude-sonnet-5-5`. `--no-session-persistence`, `--max-budget-usd 0.75`, no MCP servers.
@@ -17,9 +23,10 @@ Build under test: `ladder` on PATH, reinstalled from 2f2ad6d. Prompts, answer ke
 
 | Row | Pass rule | Answers right | Verdict |
 | --- | --- | --- | --- |
-| B3a/B3b, skill available | 3 of 3 runs, at most 2 calls, no pipe | 3 of 3 runs right | FAIL on the strict rule (3 tool calls); PASS if the Skill load is not counted (2 shell calls, 0 pipes) |
+| B3a/B3b, skill available | 3 of 3 runs, at most 2 calls, no pipe | 3 of 3 runs right | PASS (decision 2026-11-17: the Skill load is not counted; 2 shell calls, 0 pipes; 3 tool calls with the load) |
 | B3a/B3b, no skill (extra arm) | same | 3 of 3 runs right | FAIL: 1 of 3 runs within 2 calls |
-| B4 | all right, 1 ladder call per state, 0 false green | 18 of 18 sessions right, 0 false green | FAIL: `pr-api-error` used 2 ladder calls in 3 of 3 runs |
+| B4, first runs | all right, 1 ladder call per state, 0 false green | 18 of 18 sessions right, 0 false green | FAIL: `pr-api-error` used 2 ladder calls in 3 of 3 runs |
+| B4, `pr-api-error` rerun after the hint line | same | 3 of 3 right, 0 false green | PASS: 1 ladder call in each run |
 | B5 | 2 of 2 tasks in 3 of 3 runs | 6 of 6 right | PASS |
 
 ## B3a/B3b detail (`longfail`, error at line 150)
@@ -68,8 +75,9 @@ In 2 runs of `pr_green` the agent tried a Bash call. Bash was not offered, so th
 | B3 no-skill arm | 3 | 0.0990 | 154,112 |
 | B4 | 18 | 0.6078 | 656,658 |
 | B5 | 6 | 0.1915 | 130,622 |
+| B4 `pr-api-error` rerun | 3 | 0.0992 | 102,991 |
 | Setup trials (2, not scored) | 2 | 0.0453 | ___ |
-| Total | 32 | 1.0620 | 1,085,712 + trials ___ |
+| Total | 35 | 1.1612 | 1,188,703 + trials ___ |
 
 Cost is `total_cost_usd` from each session's result event. The budget stop was $5. It was not reached.
 

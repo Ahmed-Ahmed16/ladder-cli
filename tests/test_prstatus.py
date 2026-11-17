@@ -200,9 +200,16 @@ class PRStatusTests(unittest.TestCase):
                 status(SimpleNamespace(number=None, all=False), runner, out)
             self.assertEqual(main(["pr", "status"], Context(runner, out, err)), 1)
         self.assertEqual(out.getvalue(), "")
-        self.assertEqual(len(err.getvalue().splitlines()), 1)
-        self.assertLessEqual(len(err.getvalue().rstrip("\n")), 200)
+        first, hint = err.getvalue().splitlines()
+        self.assertLessEqual(len(first), 200)
+        self.assertEqual(hint, "ladder: a retry now gives the same result; try later and answer unknown")
         self.assertIs(runner.out, out)
+
+    def test_bad_json_error_has_no_retry_hint(self):
+        out, err = io.StringIO(), io.StringIO()
+        runner = FakeRunner(out, {VIEW: "not JSON"})
+        self.assertEqual(main(["pr", "status"], Context(runner, out, err)), 1)
+        self.assertNotIn("retry", err.getvalue())
 
     def test_bad_json_and_invalid_pr_are_short_errors(self):
         for answer in ("not JSON", "null", "[]", "{}"):

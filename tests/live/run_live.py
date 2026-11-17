@@ -133,14 +133,14 @@ def b3(ledger, repetitions, with_skill=True):
     return runs
 
 
-def b4(ledger, repetitions):
+def b4(ledger, repetitions, states=STATES):
     runs = []
     with tempfile.TemporaryDirectory(prefix="ladder-live-bin-") as scratch:
         shim_env = gh_shims(Path(scratch) / "bin", FROZEN / "fake_gh.py")
         for rep in range(1, repetitions + 1):
             answers, ladder_calls, details, false_green = {}, {}, [], False
             tool_calls = piped = 0
-            for state in STATES:
+            for state in states:
                 label = f"b4-r{rep}-{state}"
                 lab = fresh_lab("b4", label)
                 env = dict(shim_env, FAKE_GH_STATE=str(FROZEN / "pr_states" / f"{state}.json"))
@@ -189,18 +189,22 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("row", choices=["b3", "b3noskill", "b4", "b5", "all"])
     parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--state", choices=STATES)
     args = parser.parse_args(argv)
     ledger = Ledger()
     results = {}
     try:
         for build_id, (name, function) in ROWS.items():
             if args.row in {name, "all"}:
-                runs = function(ledger, args.runs)
-                results[build_id] = {"verdict": arm_verdict(build_id.removesuffix("_noskill"), runs) if args.runs == 3 else None,
+                only = [[args.state]] if args.state and name == "b4" else []
+                runs = function(ledger, args.runs, *only)
+                full = args.runs == 3 and not args.state
+                results[build_id] = {"verdict": arm_verdict(build_id.removesuffix("_noskill"), runs) if full else None,
                                      "runs": runs}
     except BudgetExceeded as error:
         print(f"STOP: {error}", file=sys.stderr)
-    out = RUNS / f"scores-{args.row}-{date.today().isoformat()}.json"
+    tag = f"{args.row}-{args.state}" if args.state else args.row
+    out = RUNS / f"scores-{tag}-{date.today().isoformat()}.json"
     out.write_text(json.dumps({"results": results, "cost_usd": round(ledger.cost, 4),
                                "tokens": ledger.tokens, "sessions": ledger.sessions},
                               indent=1, default=str), encoding="utf-8")

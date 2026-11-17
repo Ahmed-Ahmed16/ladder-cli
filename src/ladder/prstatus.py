@@ -23,11 +23,18 @@ def quiet_call(runner, operation, command):
         runner.out = previous
 
 
+class GhCallError(LadderError):
+    hint = "a retry now gives the same result; try later and answer unknown"
+
+
 def read_pr(number, runner):
     command = ["gh", "pr", "view"]
     if number is not None:
         command.append(str(number))
-    answer = quiet_call(runner, "capture", [*command, "--json", FIELDS])
+    try:
+        answer = quiet_call(runner, "capture", [*command, "--json", FIELDS])
+    except LadderError as error:
+        raise GhCallError(str(error)) from error
     try:
         pr = json.loads(answer)
     except json.JSONDecodeError as error:
@@ -144,7 +151,8 @@ def status(args, runner, out):
     try:
         lines = render_status(read_pr(args.number, runner), args, runner)
     except LadderError as error:
-        raise LadderError(plain(str(error))[:192]) from error
+        kind = GhCallError if isinstance(error, GhCallError) else LadderError
+        raise kind(plain(str(error))[:192]) from error
     for line in lines:
         # Sanitize before the cut so a secret cannot be exposed as a fragment.
         indent = "  " if line.startswith("  ") else ""

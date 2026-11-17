@@ -263,6 +263,8 @@ def main(argv, context) -> int:
         return error.code
     except LadderError as error:
         print(f"ladder: {plain(str(error))}", file=context.err)
+        if getattr(error, "hint", None):
+            print(f"ladder: {error.hint}", file=context.err)
         return 1
     except Exception as error:
         print(f"ladder: {plain(str(error)) or type(error).__name__}", file=context.err)
