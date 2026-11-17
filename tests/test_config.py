@@ -92,7 +92,6 @@ confirm = true
         self.assertEqual(config.review, {"wait_for": ["reviewer"]})
 
     def test_review_allows_missing_empty_and_multiple_logins(self):
-        # Cases: missing table, missing key, empty list, 1 login, several logins.
         for text, expected in (("", {}), ("[review]", {}),
                                ('[review]\nwait_for = []', {"wait_for": []}),
                                ('[review]\nwait_for = ["Bot", "person"]',
@@ -106,7 +105,6 @@ confirm = true
                 self.assert_bad('review = ' + setting, 'review: must be a table')
 
     def test_review_wait_for_must_be_a_list_of_non_empty_strings(self):
-        # Cases: scalar, wrong member type, empty member, whitespace member, nested list.
         for setting in ('"reviewer"', '42', 'true', '{}', '[42]', '[false]',
                         '[""]', '["  "]', '["reviewer", ""]', '[["reviewer"]]'):
             with self.subTest(setting=setting):
@@ -123,7 +121,6 @@ confirm = true
                                  {"about": "", "ci": ".github/check.yml", "run": expected})
 
     def test_gates_need_non_empty_run(self):
-        # Cases: absent, empty, whitespace, wrong type, empty list, invalid list member.
         for run in (None, '""', '"  "', '42', 'true', '[]', '["check", ""]',
                     '["check", "  "]', '["check", 42]', '[["check"]]'):
             with self.subTest(run=run):

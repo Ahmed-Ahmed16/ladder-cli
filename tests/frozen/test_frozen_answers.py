@@ -1,4 +1,3 @@
-"""Offline checks for the frozen prompts, scores and arm rules."""
 
 import copy
 import json

@@ -161,7 +161,6 @@ class GatesCliTests(unittest.TestCase):
         self.assertEqual(combined.getvalue().count(self.using), 1)
 
     def test_unreadable_ci_warns_and_preserves_step_exit_code(self):
-        # Cases: missing file, invalid UTF8, directory instead of a file.
         ci = self.root / "ci.yml"
         for state in ("missing", "invalid", "directory"):
             if state == "invalid":

@@ -12,7 +12,6 @@ class AddCliTests(SetupCase, unittest.TestCase):
         self.path = self.repo / "ladder.toml"
 
     def test_add_preserves_existing_bytes_and_appends_separated_block(self):
-        # Cases: empty file, LF, CRLF, missing final newline, existing blank line.
         base = b'# caf\xc3\xa9\r\n[tasks.old]\r\nabout = "Keep"\r\nrun = "keep"'
         for original in (b"", base + b"\n", base + b"\r\n", base, base + b"\n\n"):
             with self.subTest(original=original):
@@ -57,7 +56,6 @@ class AddCliTests(SetupCase, unittest.TestCase):
                 self.assertEqual((task.shell, task.confirm), (shell, confirm))
 
     def test_duplicate_task_refuses_unchanged_and_names_the_existing_script(self):
-        # Cases: table, quoted table, dotted keys, inline table, invalid schema.
         originals = [b'[tasks.check]\nabout = "Keep"\nrun = "keep"',
                      b'[tasks."check"]\nabout = "Keep"\nrun = "keep"',
                      b'tasks.check.about = "Keep"\ntasks.check.run = "keep"',

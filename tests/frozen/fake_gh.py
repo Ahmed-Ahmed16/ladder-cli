@@ -43,7 +43,6 @@ def main(argv):
            for arg in argv):
         sys.stderr.write("fake gh: --jq not supported; read the JSON yourself\n")
         return 2
-    # Explicit stubs also cover version and auth in the outage state.
     if best is not None:
         return emit(best)
     if argv == ["--version"]:

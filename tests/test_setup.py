@@ -133,7 +133,6 @@ class InstallSkillTests(SetupCase, unittest.TestCase):
     def test_missing_markers_append_after_blank_line_preserving_existing_bytes(self):
         path = self.targets()[2]
         path.parent.mkdir(parents=True)
-        # Cases: empty, no final newline, LF, CRLF, existing blank line.
         for original, separator in ((b"", b""), (b"rules", b"\n\n"),
                                     (b"rules\n", b"\n"), (b"rules\r\n", b"\r\n"),
                                     (b"rules\n\n", b"")):
@@ -145,7 +144,6 @@ class InstallSkillTests(SetupCase, unittest.TestCase):
 
     def test_broken_markers_refuse_before_any_file_changes(self):
         start, end = b"<!-- ladder:start -->\n", b"<!-- ladder:end -->\n"
-        # Cases: each missing marker, duplicates, reversed markers.
         for original in (start, end, start + start + end, start + end + end, end + start):
             for installed in (False, True):
                 with self.subTest(original=original, installed=installed):

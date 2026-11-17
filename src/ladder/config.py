@@ -63,16 +63,7 @@ def load(start) -> Config | None:
 
 
 def parse(text: str, path: str) -> Config:
-    '''
-    1. Bad TOML -> LadderError "<path>: not valid TOML: <reason>".
-    2. Allowed top level keys: tasks, gates, review. Any other -> LadderError "<path>: unknown section \"<key>\"".
-    3. tasks is a table of tables. Each task: `about` required non empty string; `run` required, a non empty string or a non empty list of non empty strings (a string becomes a 1 item tuple); `shell` optional, only "bash"; `confirm` optional bool. Any other key -> error naming it. Each error: LadderError "<path>: task \"<name>\": <problem>".
-    4. A task name in CORE_JOBS -> LadderError "<path>: task \"<name>\" clashes with the core job \"<name>\", rename it".
-    5. gates accepts optional string about, required run (same rules as tasks),
-       and optional non empty relative ci path. Unknown keys are errors.
-       Missing gates is an empty dict; present gates has run as a tuple.
-       Review accepts only optional wait_for, a list of non empty strings.
-    '''
+    """Parse ladder.toml text. Raise LadderError with prefix "<path>: " on any schema error. Return a Config; gates is {} when absent; task and gates run are tuples."""
     try:
         sections = tomllib.loads(text)
     except tomllib.TOMLDecodeError as error:

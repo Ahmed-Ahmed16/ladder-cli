@@ -51,7 +51,6 @@ def process_is_alive(pid):
 
 
 def stop_process(pid):
-    """Clean up a stub if the timeout assertion fails."""
     if not process_is_alive(pid):
         return
     if os.name == "nt":

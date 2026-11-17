@@ -1,4 +1,3 @@
-"""Fast canned-result tests for the frozen scoring contract."""
 
 import json
 import tempfile
